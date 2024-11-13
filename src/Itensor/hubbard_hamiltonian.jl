@@ -1,5 +1,6 @@
 using ITensors, ITensorMPS
 
+using LinearAlgebra
 
 # The Hubbard Hamiltonian for a 2D square lattice
 """
@@ -56,3 +57,4 @@ function hubbard_hamiltonian(s::Vector{Index{Vector{Pair{QN,Int64}}}}, t::Float6
     # Return the Hamiltonian as an MPO
     return H
 end
+

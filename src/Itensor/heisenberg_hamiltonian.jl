@@ -1,6 +1,15 @@
 using ITensors
 
 # Function to generate the Heisenberg Hamiltonian
+"""
+    heisenberg_hamiltonian(Nx::Int, Ny::Int, J::Float64)
+    Args:
+        Nx: Number of sites in the x-direction
+        Ny: Number of sites in the y-direction
+        J: Coupling constant
+    Returns:
+        hamiltonian: Heisenberg Hamiltonian as an operator sum
+"""
 function heisenberg_hamiltonian(Nx::Int, Ny::Int, J::Float64)
     N = Nx * Ny  # Total number of sites
     hamiltonian = OpSum()  # Initialize an empty operator sum
