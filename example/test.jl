@@ -61,7 +61,7 @@ H = random_mpo(N, d1, chi)
 # energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol)
 # Example parameters
 Nx = 4         # Number of sites along the x-axis (length of chain)
-Ny = 1         # For a 1D chain, set Ny = 1; for 2D grid, Ny > 1
+Ny = 4       # For a 1D chain, set Ny = 1; for 2D grid, Ny > 1
 t = 1.0        # Hopping parameter
 U = 4.0        # On-site interaction
 max_sweeps = 100  # Maximum DMRG sweeps
@@ -69,14 +69,14 @@ max_sweeps = 100  # Maximum DMRG sweeps
 tol = 1e-6     # Tolerance for convergence
 
 # # Create Hubbard Hamiltonian as MPO
-# H = hubbard(Nx=Nx, Ny=Ny, t=t, U=U, yperiodic=false)
+H = hubbard(Nx=Nx, Ny=Ny, t=t, U=U, yperiodic=false)
 
 # display(H)
 # # Initialize a random MPS with bond dimension χ_max
-# mps = random_mps(Nx * Ny, 4, χ_max)  # 4 corresponds to local dimension `d`
+mps = random_mps(Nx * Ny, 4, χ_max)  # 4 corresponds to local dimension `d`
 
-# # Run the DMRG algorithm
-# energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol,hubbard)
+# Run the DMRG algorithm
+energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol,hubbard)
 
 # println("Ground state energy: ", energy)
 

@@ -5,14 +5,14 @@ Nx, Ny = 4, 4
 N = Nx * Ny
 t=1.0
 U=4.0
-include("./../src/hubbard_hamiltonian.jl")
-include("./../src/dmrg.jl")
-include("./../src/utils.jl")
+include("./../src/Itensor/hubbard_hamiltonian.jl")
+include("./../src/Itensor/dmrg_ITensor.jl")
+include("./../src/Itensor/utils.jl")
 
 sites = siteinds("Electron", N; conserve_qns=true)
 
 # Create Hubbard model Hamiltonian (MPO)
-H = hubbard_hamiltonian(sites, t, U, Nx, Ny)
+H = hubbard_hamiltonian(sites, t,U)
 
 # Define initial state (half-filling)
 state = [isodd(n) ? "Up" : "Dn" for n in 1:N]

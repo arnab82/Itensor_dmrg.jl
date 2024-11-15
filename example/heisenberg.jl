@@ -1,4 +1,4 @@
-include("../src/Itensor_dmrg.jl")
+include("../src/Itensor/Itensor_dmrg.jl")
 using ITensors
 # Define lattice parameters
 Nx, Ny = 4, 4

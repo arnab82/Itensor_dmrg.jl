@@ -8,8 +8,8 @@ using Printf
 function contract_two_sites_right(mps::MPS, i::Int)
     left_tensor = mps.tensors[i]
     right_tensor = mps.tensors[i+1]
-    println("size of left tensor is ",size(left_tensor))
-    println("size of right tensor is ",size(right_tensor))
+    # println("size of left tensor is ",size(left_tensor))
+    # println("size of right tensor is ",size(right_tensor))
     # Create the two-site tensor by contracting along the shared bond dimension
     two_site_tensor = zeros(Complex{Float64}, size(left_tensor, 1), mps.d, mps.d, size(right_tensor, 3))
     @tensor two_site_tensor[l, s1, s2, r] := left_tensor[l, s1, k] * right_tensor[k, s2, r]
@@ -99,10 +99,10 @@ function construct_effective_hamiltonian(H::MPO, mps::MPS, i::Int,chi::Int)
     
     # Build left environment
     for j in 1:i-1
-        println(j)
-        println(size(L))
-        println(size(H.tensor[j]))
-        println(size(mps.tensors[j]))
+        # println(j)
+        # println(size(L))
+        # println(size(H.tensor[j]))
+        # println(size(mps.tensors[j]))
         # Initialize L_temp with correct dimensions for contraction
         mps_i_conj=conj(mps.tensors[j])
         println(size(mps_i_conj))
@@ -115,9 +115,9 @@ function construct_effective_hamiltonian(H::MPO, mps::MPS, i::Int,chi::Int)
     # Iterate over each site from the end down to site i+1
     for j in length(H.tensor):-1:i+1
         # Print current dimensions for debugging
-        println("R size: ", size(R))
-        println("H.tensor[j] size: ", size(H.tensor[j]))
-        println("mps.tensors[j] size: ", size(mps.tensors[j]))
+        # println("R size: ", size(R))
+        # println("H.tensor[j] size: ", size(H.tensor[j]))
+        # println("mps.tensors[j] size: ", size(mps.tensors[j]))
 
         # Initialize R_temp with correct dimensions for contraction
         mps_i = mps.tensors[j]
@@ -145,31 +145,31 @@ function construct_effective_hamiltonian(H::MPO, mps::MPS, i::Int,chi::Int)
     # Contract L with H_temp
     L_end = L
     temp1 = zeros(Complex{Float64},size(L_end, 1), size(L_end, 3), size(H_temp, 2), size(H_temp, 3), size(H_temp, 4))
-    println("size of L is ",size(L_end))
-    println("size of H_temp is",size(H_temp))
-    println("size of temp is",size(temp1))
+    # println("size of L is ",size(L_end))
+    # println("size of H_temp is",size(H_temp))
+    # println("size of temp is",size(temp1))
     @tensor temp1[x,a, s, t, b] := L_end[x, y, a] * H_temp[y, s, t, b]
     temp1=reshape(temp1,(size(temp1,1)*size(temp1,2),size(temp1,3),size(temp1,4),size(temp1,5)))
 
     # Contract temp1 with R
     R_start = R
     temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3),size(R_start, 1), size(R_start, 3))
-    println("size of R is ",size(R))
-    println("size of temp1 is ",size(temp1))
-    println("size of temp2 is",size(temp2))
+    # println("size of R is ",size(R))
+    # println("size of temp1 is ",size(temp1))
+    # println("size of temp2 is",size(temp2))
     @tensor temp2[x, a, s, y, b] := temp1[x, a, s, t] * R_start[y, t, b]
     temp2=reshape(temp2,(size(temp2,1),size(temp2,2),size(temp2,3),size(temp2,4)*size(temp2,5)))
 
     # Reshape temp2 to construct the effective Hamiltonian H_eff
     chi_L = size(L_end, 3)
     chi_R = size(R_start, 3)
-    println(chi_L)
-    println(chi_R)
-    println(chi)
-    println("size of temp2 is",size(temp2))
+    # println(chi_L)
+    # println(chi_R)
+    # println(chi)
+    # println("size of temp2 is",size(temp2))
     H_eff = reshape(temp2, (chi_L * d^2 * chi_R, chi_L * d^2 * chi_R))
 
-    println("Size of H_eff: ", size(H_eff))
+    # println("Size of H_eff: ", size(H_eff))
     return H_eff
 end
 
@@ -177,14 +177,14 @@ function construct_effective_hamiltonian_left(H::MPO, mps::MPS, i::Int, chi::Int
     # Initialize left and right environments
     L = ones(Complex{Float64}, 1, 1, 1)
     R = ones(Complex{Float64}, 1, 1, 1)
-    println("i is ",i)
-    println("size of MPS is",size(mps.tensors[i]))
+    # println("i is ",i)
+    # println("size of MPS is",size(mps.tensors[i]))
     # Build the right environment up to site i-1
     for j in length(H.tensor):-1:i
-        println("Right environment at site ", j)
-        println("R size: ", size(R))
-        println("H.tensor[j] size: ", size(H.tensor[j]))
-        println("mps.tensors[j] size: ", size(mps.tensors[j]))
+        # println("Right environment at site ", j)
+        # println("R size: ", size(R))
+        # println("H.tensor[j] size: ", size(H.tensor[j]))
+        # println("mps.tensors[j] size: ", size(mps.tensors[j]))
 
         mps_j = mps.tensors[j]
         H_j = H.tensor[j]
@@ -195,10 +195,10 @@ function construct_effective_hamiltonian_left(H::MPO, mps::MPS, i::Int, chi::Int
 
     # Build the left environment up to site i-2
     for j in 1:i-2
-        println("Left environment at site ", j)
-        println("L size: ", size(L))
-        println("H.tensor[j] size: ", size(H.tensor[j]))
-        println("mps.tensors[j] size: ", size(mps.tensors[j]))
+        # println("Left environment at site ", j)
+        # println("L size: ", size(L))
+        # println("H.tensor[j] size: ", size(H.tensor[j]))
+        # println("mps.tensors[j] size: ", size(mps.tensors[j]))
 
         mps_j = mps.tensors[j]
         H_j = H.tensor[j]
@@ -273,25 +273,27 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
         if direction == :right
             two_site_tensor = contract_two_sites_right(mps, i)
             H_eff = construct_effective_hamiltonian(H, mps, i,mps.χ)
-            println("chi_right is repeated", size(mps.tensors[i+1],3))
-            println("Chi_left is repeated",size(mps.tensors[i],1))   
+            # println("chi_right is repeated", size(mps.tensors[i+1],3))
+            # println("Chi_left is repeated",size(mps.tensors[i],1))   
         else
             two_site_tensor = contract_two_sites_left(mps, i)
             H_eff = construct_effective_hamiltonian_left(H, mps, i,mps.χ)
-            println("chi_right is repeated", size(mps.tensors[i],3))
-            println("Chi_left is repeated",size(mps.tensors[i-1],1))   
+            # println("chi_right is repeated", size(mps.tensors[i],3))
+            # println("Chi_left is repeated",size(mps.tensors[i-1],1))   
         end
         # H_eff = construct_effective_hamiltonian(H, mps, i,mps.χ)
         println(size(H_eff))
         println(size(two_site_tensor))
         # Solve for ground state using eigsolve
         energy, ground_state = eigsolve(H_eff, vec(two_site_tensor), 1, :SR)
-        println("energy at i in range  ",energy, i,range)
+        println("energy at $i in $range  ",energy)
 
         
         # Reshape ground state back to a tensor
         ground_state = reshape(ground_state, (size(two_site_tensor')))
-        println("shape of ground state is ",size(ground_state)) 
+        column_sums = sum(ground_state, dims=1)
+        ground_state = ground_state ./ column_sums
+        # println("shape of ground state is ",size(ground_state)) 
         # Perform SVD and truncate
         U, S, Vt = svd(ground_state)
         χ_max = min(χ_max, count(S .> tol))  # Truncate bond dimension
@@ -300,9 +302,9 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
         U = U[:, 1:χ_max]
         S = S[1:χ_max]
         Vt = Vt[1:χ_max, :]
-        println("shape of U is ",size(U))
-        println("shape of S is ",size(S))
-        println("shape of Vt is ",size(Vt))
+        # println("shape of U is ",size(U))
+        # println("shape of S is ",size(S))
+        # println("shape of Vt is ",size(Vt))
         # Update MPS tensors
         if direction == :right
             mps.tensors[i] = reshape(U, (size(mps.tensors[i], 1), mps.d, χ_max))
@@ -322,17 +324,17 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64,hubba
     for sweep in 1:max_sweeps
         # Right sweep
         energy_right, trunc_error_right ,mps= dmrg_sweep!(H, mps, :right, χ_max, tol,hubbard)
-        println("mps_new")
+        # println("mps_new")
         # display(mps_new)
         # println(size(mps_new.tensors[4]))
         # Left sweep
         energy_left, trunc_error_left,mps = dmrg_sweep!(H, mps, :left, χ_max, tol,hubbard)
-        println(energy_left)
+        # println(energy_left)
         # Total truncation error for this sweep
         total_truncation_error = trunc_error_right + trunc_error_left
         
         # Check for convergence based on energy change
-        println("energy at sweep ",sweep,energy_left,energy_right)
+        println("energy at $sweep ",energy_left,  energy_right)
         energy_change = abs(energy_right- energy)
         avg_sweep_energy = (energy_right + energy_left) / 2
         
