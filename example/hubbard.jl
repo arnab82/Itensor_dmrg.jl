@@ -10,7 +10,7 @@ U=4.0
 sites = siteinds("Electron", N; conserve_qns=true)
 
 # Create Hubbard model Hamiltonian (MPO)
-H = Itensor_dmrg.hubbard_hamiltonian(sites, t, U)
+H = Itensor_dmrg.hubbard_hamiltonian(sites, t, U, Nx, Ny)
 
 # Define initial state (half-filling)
 state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
