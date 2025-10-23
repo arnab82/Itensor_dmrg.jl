@@ -226,8 +226,6 @@ function construct_effective_hamiltonian_left(H::MPO, mps::MPS, i::Int, chi::Int
     temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
     @tensor temp2[a, b, c, d, e, f, g, h] := temp1[a, b, c, d, e, f, i] * R[g, i, h]
     
-    println("Left sweep temp2 shape: ", size(temp2))
-    println("Left sweep L shape: ", size(L), ", R shape: ", size(R))
     # Reshape temp2 to construct the effective Hamiltonian H_eff
     # temp2 is [mps_left, mps_left_conj, phys_out_1, phys_out_2, phys_in_1, phys_in_2, mps_right, mps_right_conj]
     # We want matrix with:
@@ -235,7 +233,6 @@ function construct_effective_hamiltonian_left(H::MPO, mps::MPS, i::Int, chi::Int
     # cols (ket): [mps_left, phys_in_1, phys_in_2, mps_right]
     chi_L = size(temp2, 1)  # mps_left bond (between i-2 and i-1)
     chi_R = size(temp2, 7)  # mps_right bond (between i and i+1)
-    println("chi_L=", chi_L, ", chi_R=", chi_R, ", d=", d)
     # Permute to: [mps_left_conj, phys_out_1, phys_out_2, mps_right_conj, mps_left, phys_in_1, phys_in_2, mps_right]
     temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
@@ -271,7 +268,6 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
         else
             chi_iminus1_left = size(mps.tensors[i-1], 1)
             chi_i_right = size(mps.tensors[i], 3)
-            println("Left sweep at i=$i: tensors[$(i-1)] size=", size(mps.tensors[i-1]), ", tensors[$i] size=", size(mps.tensors[i]))
         end
         
         # Contract two sites
@@ -282,10 +278,6 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
         else
             two_site_tensor = contract_two_sites_left(mps, i)
             H_eff = construct_effective_hamiltonian_left(H, mps, i,mps.χ)
-        end
-        # Check dimensions match before eigsolve
-        if size(H_eff, 1) != length(vec(two_site_tensor))
-            error("Dimension mismatch at i=$i: H_eff is $(size(H_eff)), two_site_tensor is $(size(two_site_tensor)), vec length is $(length(vec(two_site_tensor)))")
         end
         # Solve for ground state using eigsolve
         energy, ground_state = eigsolve(H_eff, vec(two_site_tensor), 1, :SR)
@@ -311,10 +303,8 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
         else
-            println("Left sweep update at i=$i: chi_iminus1_left=$chi_iminus1_left, chi_i_right=$chi_i_right, χ_trunc=$χ_trunc")
             mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, chi_i_right))
-            println("After left update: tensors[$(i-1)]=", size(mps.tensors[i-1]), ", tensors[$i]=", size(mps.tensors[i]))
         end
     end
     
