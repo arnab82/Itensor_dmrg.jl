@@ -265,7 +265,6 @@ function eigsolve(H_eff::Matrix{ComplexF64}, init_state::Vector{ComplexF64}, num
                                           tol=1e-10,          # Tighter tolerance
                                           krylovdim=30,       # Larger Krylov subspace
                                           maxiter=200,        # More iterations allowed
-                                          issymmetric=false,  # Don't assume symmetry for complex matrices
                                           ishermitian=true)   # Hamiltonian should be Hermitian
     return vals[1], vecs[1]  # Return the ground state energy and wavefunction
 end
