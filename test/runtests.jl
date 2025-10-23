@@ -2,10 +2,7 @@ using Test
 using ITensors
 using ITensorMPS
 using LinearAlgebra
-
-# Include the module
-include("../src/Itensor/Itensor_dmrg.jl")
-using .Itensor_dmrg
+using Itensor_dmrg
 
 @testset "Itensor_dmrg.jl Tests" begin
     

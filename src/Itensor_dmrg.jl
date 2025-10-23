@@ -6,10 +6,10 @@ using ITensorMPS
 using Combinatorics
 using KrylovKit
 
-include("./hubbard_hamiltonian.jl")
-include("./heisenberg_hamiltonian.jl")
-include("./dmrg_ITensor.jl")
-include("./utils.jl")
+include("Itensor/hubbard_hamiltonian.jl")
+include("Itensor/heisenberg_hamiltonian.jl")
+include("Itensor/dmrg_ITensor.jl")
+include("Itensor/utils.jl")
 
 
 export hubbard_hamiltonian
