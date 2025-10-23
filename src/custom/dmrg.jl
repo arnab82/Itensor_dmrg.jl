@@ -199,27 +199,25 @@ function construct_effective_hamiltonian(cache::EnvironmentCache, H::MPO, mps::M
     H_i = H.tensor[i]
     H_iplus1 = H.tensor[i+1]
 
-    # Perform tensor contraction in a more memory-efficient way
-    # Instead of creating large intermediate arrays, contract step by step
-    
-    # Contract L with H_i: L[a,h,b] * H_i[h,c,d,g] -> temp1[a,b,c,d,g]
-    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_i, 2), size(H_i, 3), size(H_i, 4))
-    @tensor temp1[a, b, c, d, g] = L[a, h, b] * H_i[h, c, d, g]
-    
-    # Contract temp1 with H_iplus1: temp1[a,b,c,d,g] * H_iplus1[g,e,f,i] -> temp2[a,b,c,d,e,f,i]
-    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(H_iplus1, 2), size(H_iplus1, 3), size(H_iplus1, 4))
-    @tensor temp2[a, b, c, d, e, f, i] = temp1[a, b, c, d, g] * H_iplus1[g, e, f, i]
-    
-    # Contract temp2 with R: temp2[a,b,c,d,e,f,i] * R[g,i,h] -> result[a,b,c,d,e,f,g,h]
-    result = zeros(Complex{Float64}, size(temp2, 1), size(temp2, 2), size(temp2, 3), size(temp2, 4), size(temp2, 5), size(temp2, 6), size(R, 1), size(R, 3))
-    @tensor result[a, b, c, d, e, f, g, h] = temp2[a, b, c, d, e, f, i] * R[g, i, h]
+    # Contract H_i and H_i+1 first (this preserves the original logic)
+    # But use @tensor instead of @einsum for better performance
+    H_two = zeros(Complex{Float64}, size(H_i, 1), size(H_i, 2), size(H_iplus1, 2), size(H_i, 3), size(H_iplus1, 3), size(H_iplus1, 4))
+    @tensor H_two[a, b, c, d, e, f] = H_i[a, b, d, g] * H_iplus1[g, c, e, f]
 
-    # Reshape result to construct the effective Hamiltonian H_eff
-    chi_L = size(result, 1)  # mps_left bond
-    chi_R = size(result, 7)  # mps_right bond
+    # Contract with left environment
+    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
+    @tensor temp1[a, b, c, d, e, f, g] = L[a, h, b] * H_two[h, c, d, e, f, g]
+
+    # Contract with right environment
+    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
+    @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
+
+    # Reshape temp2 to construct the effective Hamiltonian H_eff
+    chi_L = size(temp2, 1)  # mps_left bond
+    chi_R = size(temp2, 7)  # mps_right bond
     # Permute and reshape in one step for efficiency
-    result_perm = permutedims(result, [2, 3, 5, 8, 1, 4, 6, 7])
-    H_eff = reshape(result_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
+    temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
+    H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
 end
@@ -234,25 +232,25 @@ function construct_effective_hamiltonian_left(cache::EnvironmentCache, H::MPO, m
     H_im1 = H.tensor[i - 1]
     H_i = H.tensor[i]
 
-    # Perform tensor contraction in a more memory-efficient way
-    # Contract L with H_im1: L[a,h,b] * H_im1[h,c,d,g] -> temp1[a,b,c,d,g]
-    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_im1, 2), size(H_im1, 3), size(H_im1, 4))
-    @tensor temp1[a, b, c, d, g] = L[a, h, b] * H_im1[h, c, d, g]
+    # Contract H_(i-1) and H_i (preserving original logic)
+    # Use @tensor instead of @einsum for better performance
+    H_two = zeros(Complex{Float64}, size(H_im1, 1), size(H_im1, 2), size(H_i, 2), size(H_im1, 3), size(H_i, 3), size(H_i, 4))
+    @tensor H_two[a, b, c, d, e, f] = H_im1[a, b, d, g] * H_i[g, c, e, f]
     
-    # Contract temp1 with H_i: temp1[a,b,c,d,g] * H_i[g,e,f,i] -> temp2[a,b,c,d,e,f,i]
-    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(H_i, 2), size(H_i, 3), size(H_i, 4))
-    @tensor temp2[a, b, c, d, e, f, i] = temp1[a, b, c, d, g] * H_i[g, e, f, i]
+    # Contract with left environment
+    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
+    @tensor temp1[a, b, c, d, e, f, g] = L[a, h, b] * H_two[h, c, d, e, f, g]
+
+    # Contract with right environment
+    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
+    @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
     
-    # Contract temp2 with R: temp2[a,b,c,d,e,f,i] * R[g,i,h] -> result[a,b,c,d,e,f,g,h]
-    result = zeros(Complex{Float64}, size(temp2, 1), size(temp2, 2), size(temp2, 3), size(temp2, 4), size(temp2, 5), size(temp2, 6), size(R, 1), size(R, 3))
-    @tensor result[a, b, c, d, e, f, g, h] = temp2[a, b, c, d, e, f, i] * R[g, i, h]
-    
-    # Reshape result to construct the effective Hamiltonian H_eff
-    chi_L = size(result, 1)  # mps_left bond
-    chi_R = size(result, 7)  # mps_right bond
+    # Reshape temp2 to construct the effective Hamiltonian H_eff
+    chi_L = size(temp2, 1)  # mps_left bond
+    chi_R = size(temp2, 7)  # mps_right bond
     # Permute and reshape in one step for efficiency
-    result_perm = permutedims(result, [2, 3, 5, 8, 1, 4, 6, 7])
-    H_eff = reshape(result_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
+    temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
+    H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
 end
@@ -262,8 +260,13 @@ end
 
 # Function to solve the eigenvalue problem
 function eigsolve(H_eff::Matrix{ComplexF64}, init_state::Vector{ComplexF64}, num_eigvals::Int, which_eigvals::Symbol)
-    # Use KrylovKit's eigsolve function
-    vals, vecs, info = KrylovKit.eigsolve(H_eff, init_state, num_eigvals, which_eigvals)
+    # Use KrylovKit's eigsolve function with improved parameters for better convergence
+    vals, vecs, info = KrylovKit.eigsolve(H_eff, init_state, num_eigvals, which_eigvals;
+                                          tol=1e-10,          # Tighter tolerance
+                                          krylovdim=30,       # Larger Krylov subspace
+                                          maxiter=200,        # More iterations allowed
+                                          issymmetric=false,  # Don't assume symmetry for complex matrices
+                                          ishermitian=true)   # Hamiltonian should be Hermitian
     return vals[1], vecs[1]  # Return the ground state energy and wavefunction
 end
 
