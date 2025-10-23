@@ -59,12 +59,15 @@ setmaxdim!(sweeps, 10, 20, 50, 100, 100)
 - `example/heisenberg.jl`
 - `example/hubbard.jl`
 
-**Change**: Removed/commented out the `simple_dmrg` call with extremely low `maxdim=2` or `maxdim=3`
+**Change**: Removed/commented out the `simple_dmrg` call with extremely low bond dimensions
 ```julia
-# Before
+# Before (heisenberg.jl)
 energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2, maxdim=2, cutoff=1E-6)
 
-# After (commented out with better parameters if needed)
+# Before (hubbard.jl)
+energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2, maxdim=3, cutoff=1E-6)
+
+# After (both files - commented out with better parameters if needed)
 # energy2, ψ2 = Itensor_dmrg.simple_dmrg(H, ψ, 2, maxdim=50, cutoff=1E-8)
 ```
 
@@ -128,7 +131,14 @@ Memory scaling for DMRG: `O(N × χ² × d²)`
 - χ = bond dimension (100 vs 200)
 - d = 2 (spin-1/2 physical dimension)
 
-With χ=200: Memory ∝ 16 × 200² × 2² = 2,560,000 elements
-With χ=100: Memory ∝ 16 × 100² × 2² = 640,000 elements
+Assuming 8-byte Float64 elements:
 
-The reduction by a factor of 4 in memory usage is what makes the difference between crashing and running successfully.
+With χ=200: 
+- Elements: 16 × 200² × 2² = 2,560,000
+- Memory: ~20 MB per tensor, ~150-200 MB total with all environments
+
+With χ=100: 
+- Elements: 16 × 100² × 2² = 640,000
+- Memory: ~5 MB per tensor, ~40-60 MB total with all environments
+
+The reduction by a factor of 4 in tensor size (and similar reduction in total memory usage) is what makes the difference between crashing and running successfully.
