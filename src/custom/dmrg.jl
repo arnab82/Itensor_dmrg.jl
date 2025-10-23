@@ -354,19 +354,11 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     initialize_cache!(cache, H, mps)
     
     for sweep in 1:max_sweeps
-        # Right sweep
+        # Right sweep (cache is reinitialized within dmrg_sweep! after each tensor update)
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Reinitialize cache after right sweep to ensure consistency
-        initialize_cache!(cache, H, mps)
-        
-        # Left sweep
+        # Left sweep (cache is reinitialized within dmrg_sweep! after each tensor update)
         energy_left, trunc_error_left, mps = dmrg_sweep!(H, mps, cache, :left, χ_max, tol, hubbard)
-        
-        # Reinitialize cache after left sweep for next iteration
-        if sweep < max_sweeps
-            initialize_cache!(cache, H, mps)
-        end
         
         # Total truncation error for this sweep
         total_truncation_error = trunc_error_right + trunc_error_left
