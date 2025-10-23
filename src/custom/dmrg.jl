@@ -346,11 +346,12 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
             mps.tensors[i-1] = reshape(U * Diagonal(S_trunc), (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Vt, (χ_trunc, mps.d, chi_i_right))
             # Update right environments that depend on the updated tensors
-            # After updating sites i-1 and i, we need to update R[i-1] and R[i]
-            update_right_environment!(cache, H, mps, i)
-            if i-1 > 1
-                update_right_environment!(cache, H, mps, i-1)
+            # After updating sites i-1 and i, we need to update R[i] and R[i-1]
+            # Order matters: R[i-1] depends on R[i], so update R[i] first
+            if i < mps.N
+                update_right_environment!(cache, H, mps, i+1)  # This updates R[i] using R[i+1]
             end
+            update_right_environment!(cache, H, mps, i)  # This updates R[i-1] using R[i]
         end
     end
     
