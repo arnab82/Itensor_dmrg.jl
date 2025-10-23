@@ -105,7 +105,6 @@ function construct_effective_hamiltonian(H::MPO, mps::MPS, i::Int,chi::Int)
         # println(size(mps.tensors[j]))
         # Initialize L_temp with correct dimensions for contraction
         mps_i_conj=conj(mps.tensors[j])
-        println(size(mps_i_conj))
         mps_i=mps.tensors[j]
         H_i=H.tensor[j]
         L_temp = zeros(Complex{Float64}, size(mps_i, 1), size(H_i, 2), size(mps_i, 1))
@@ -137,7 +136,6 @@ function construct_effective_hamiltonian(H::MPO, mps::MPS, i::Int,chi::Int)
 
     # Perform tensor contraction to build the effective Hamiltonian
     #contract L with H_i ,then H_i+1 and then with R
-    println(i)
     #contract H_i and H_i+1
     # H_i: [mpo_left, phys_out_1, phys_in_1, mpo_mid]
     # H_iplus1: [mpo_mid, phys_out_2, phys_in_2, mpo_right]
@@ -161,8 +159,8 @@ function construct_effective_hamiltonian(H::MPO, mps::MPS, i::Int,chi::Int)
     # We want matrix with:
     # rows (bra): [mps_left_conj, phys_out_1, phys_out_2, mps_right_conj]
     # cols (ket): [mps_left, phys_in_1, phys_in_2, mps_right]
-    chi_L = size(L_end, 3)
-    chi_R = size(R_start, 3)
+    chi_L = size(temp2, 1)  # mps_left bond (between i-1 and i)
+    chi_R = size(temp2, 7)  # mps_right bond (between i+1 and i+2)
     # Permute to: [mps_left_conj, phys_out_1, phys_out_2, mps_right_conj, mps_left, phys_in_1, phys_in_2, mps_right]
     temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
@@ -222,28 +220,26 @@ function construct_effective_hamiltonian_left(H::MPO, mps::MPS, i::Int, chi::Int
     # L: [mps_left, mpo_left, mps_left_conj]
     temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
     @tensor temp1[a, b, c, d, e, f, g] := L[a, h, b] * H_two[h, c, d, e, f, g]
-    println("Size of temp1: ", size(temp1))
 
     # Contract with right environment
     # R: [mps_right, mpo_right, mps_right_conj]
     temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
     @tensor temp2[a, b, c, d, e, f, g, h] := temp1[a, b, c, d, e, f, i] * R[g, i, h]
-
-    println("Size of temp2: ", size(temp2))
-    println("Size of R: ", size(R))
     
+    println("Left sweep temp2 shape: ", size(temp2))
+    println("Left sweep L shape: ", size(L), ", R shape: ", size(R))
     # Reshape temp2 to construct the effective Hamiltonian H_eff
     # temp2 is [mps_left, mps_left_conj, phys_out_1, phys_out_2, phys_in_1, phys_in_2, mps_right, mps_right_conj]
     # We want matrix with:
     # rows (bra): [mps_left_conj, phys_out_1, phys_out_2, mps_right_conj]
     # cols (ket): [mps_left, phys_in_1, phys_in_2, mps_right]
-    chi_L = size(L, 3)
-    chi_R = size(R, 3)
+    chi_L = size(temp2, 1)  # mps_left bond (between i-2 and i-1)
+    chi_R = size(temp2, 7)  # mps_right bond (between i and i+1)
+    println("chi_L=", chi_L, ", chi_R=", chi_R, ", d=", d)
     # Permute to: [mps_left_conj, phys_out_1, phys_out_2, mps_right_conj, mps_left, phys_in_1, phys_in_2, mps_right]
     temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
-    println("Size of H_eff (left sweep): ", size(H_eff))
     return H_eff
 end
 
@@ -265,39 +261,42 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
     else
         range = direction == :right ? (2:mps.N-2) : reverse(2:mps.N-2)
     end
-    println("range is ",range)
     total_truncation_error = 0.0
     
     for i in range
+        # Save tensor dimensions before any modifications
+        if direction == :right
+            chi_i_left = size(mps.tensors[i], 1)
+            chi_iplus1_right = size(mps.tensors[i+1], 3)
+        else
+            chi_iminus1_left = size(mps.tensors[i-1], 1)
+            chi_i_right = size(mps.tensors[i], 3)
+            println("Left sweep at i=$i: tensors[$(i-1)] size=", size(mps.tensors[i-1]), ", tensors[$i] size=", size(mps.tensors[i]))
+        end
+        
         # Contract two sites
         # Construct effective Hamiltonian
-        
         if direction == :right
             two_site_tensor = contract_two_sites_right(mps, i)
             H_eff = construct_effective_hamiltonian(H, mps, i,mps.χ)
-            # println("chi_right is repeated", size(mps.tensors[i+1],3))
-            # println("Chi_left is repeated",size(mps.tensors[i],1))   
         else
             two_site_tensor = contract_two_sites_left(mps, i)
             H_eff = construct_effective_hamiltonian_left(H, mps, i,mps.χ)
-            # println("chi_right is repeated", size(mps.tensors[i],3))
-            # println("Chi_left is repeated",size(mps.tensors[i-1],1))   
         end
-        # H_eff = construct_effective_hamiltonian(H, mps, i,mps.χ)
-        println(size(H_eff))
-        println(size(two_site_tensor))
+        # Check dimensions match before eigsolve
+        if size(H_eff, 1) != length(vec(two_site_tensor))
+            error("Dimension mismatch at i=$i: H_eff is $(size(H_eff)), two_site_tensor is $(size(two_site_tensor)), vec length is $(length(vec(two_site_tensor)))")
+        end
         # Solve for ground state using eigsolve
         energy, ground_state = eigsolve(H_eff, vec(two_site_tensor), 1, :SR)
-        println("energy at $i in $range  ",energy)
 
-        
-        # Reshape ground state back to a tensor
-        ground_state = reshape(ground_state, (size(two_site_tensor')))
+        # Reshape ground state back to a tensor (same shape as two_site_tensor)
+        ground_state = reshape(ground_state, size(two_site_tensor))
         # Normalize the ground state
         ground_state = ground_state / norm(ground_state)
-        # println("shape of ground state is ",size(ground_state)) 
         # Perform SVD and truncate
-        U, S, Vt = svd(ground_state)
+        F = svd(ground_state)
+        U, S, Vt = F.U, F.S, F.Vt
         # Truncate bond dimension: keep at most χ_max singular values above tolerance
         χ_trunc = min(χ_max, length(S), count(S .> tol))
         # Ensure at least one singular value is kept
@@ -307,16 +306,15 @@ function dmrg_sweep!(H::MPO, mps::MPS, direction::Symbol, χ_max::Int, tol::Floa
         U = U[:, 1:χ_trunc]
         S = S[1:χ_trunc]
         Vt = Vt[1:χ_trunc, :]
-        # println("shape of U is ",size(U))
-        # println("shape of S is ",size(S))
-        # println("shape of Vt is ",size(Vt))
         # Update MPS tensors
         if direction == :right
-            mps.tensors[i] = reshape(U, (size(mps.tensors[i], 1), mps.d, χ_trunc))
-            mps.tensors[i+1] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, size(mps.tensors[i+1], 3)))
+            mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
+            mps.tensors[i+1] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
         else
-            mps.tensors[i-1] = reshape(U, (size(mps.tensors[i-1], 1), mps.d, χ_trunc))
-            mps.tensors[i] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, size(mps.tensors[i], 3)))
+            println("Left sweep update at i=$i: chi_iminus1_left=$chi_iminus1_left, chi_i_right=$chi_i_right, χ_trunc=$χ_trunc")
+            mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
+            mps.tensors[i] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, chi_i_right))
+            println("After left update: tensors[$(i-1)]=", size(mps.tensors[i-1]), ", tensors[$i]=", size(mps.tensors[i]))
         end
     end
     
