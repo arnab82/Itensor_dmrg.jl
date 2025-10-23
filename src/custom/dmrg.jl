@@ -293,40 +293,50 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
             two_site_tensor = contract_two_sites_left(mps, i)
             H_eff = construct_effective_hamiltonian_left(cache, H, mps, i)
         end
+        
         # Solve for ground state using eigsolve
         energy, ground_state = eigsolve(H_eff, vec(two_site_tensor), 1, :SR)
 
         # Reshape ground state back to a tensor (same shape as two_site_tensor)
         ground_state = reshape(ground_state, size(two_site_tensor))
-        # Normalize the ground state
-        ground_state = ground_state / norm(ground_state)
+        
+        # Normalize the ground state (in-place where possible)
+        ground_state_norm = norm(ground_state)
+        ground_state ./= ground_state_norm
+        
         # Perform SVD and truncate
         F = svd(ground_state)
         U, S, Vt = F.U, F.S, F.Vt
+        
         # Truncate bond dimension: keep at most χ_max singular values above tolerance
-        χ_trunc = min(χ_max, length(S), count(S .> tol))
+        χ_trunc = min(χ_max, length(S), count(>(tol), S))
         # Ensure at least one singular value is kept
         χ_trunc = max(1, χ_trunc)
-        truncation_error = sum(abs2, S[χ_trunc+1:end])  # Calculate truncation error
-        total_truncation_error += truncation_error  # Accumulate truncation error
-        U = U[:, 1:χ_trunc]
-        S = S[1:χ_trunc]
-        Vt = Vt[1:χ_trunc, :]
+        
+        # Calculate truncation error before truncation
+        @inbounds truncation_error = sum(abs2(S[i]) for i in (χ_trunc+1):length(S))
+        total_truncation_error += truncation_error
+        
+        # Truncate arrays
+        U = @view U[:, 1:χ_trunc]
+        S_trunc = @view S[1:χ_trunc]
+        Vt = @view Vt[1:χ_trunc, :]
+        
         # Update MPS tensors
         if direction == :right
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
-            mps.tensors[i+1] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
+            mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
             # Update cached environments after updating tensors
             update_left_environment!(cache, H, mps, i)
         else
             mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
-            mps.tensors[i] = reshape(Diagonal(S) * Vt, (χ_trunc, mps.d, chi_i_right))
+            mps.tensors[i] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_i_right))
             # Update cached environments after updating tensors
             update_right_environment!(cache, H, mps, i)
         end
     end
     
-    return real(energy), total_truncation_error , mps
+    return real(energy), total_truncation_error, mps
 end
 
 
