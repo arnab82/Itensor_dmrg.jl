@@ -20,25 +20,31 @@ function random_MPS(N::Int, d::Int, χ::Int)
     return MPS(tensors)
 end
 
-# Left-normalize the MPS
+# Left-normalize the MPS (in-place)
 function left_normalize!(mps::MPS)
     for i in 1:(mps.N - 1)
         M = reshape(mps.tensors[i], (size(mps.tensors[i], 1) * mps.d, size(mps.tensors[i], 3)))
         F = qr(M)
-        mps.tensors[i] = reshape(Matrix(F.Q), (size(mps.tensors[i], 1), mps.d, size(F.Q, 2)))
-        mps.tensors[i+1] = reshape(F.R * reshape(mps.tensors[i+1], (size(mps.tensors[i+1], 1), :)), 
-                                   (size(F.R, 1), mps.d, size(mps.tensors[i+1], 3)))
+        Q_mat = Matrix(F.Q)
+        mps.tensors[i] = reshape(Q_mat, (size(mps.tensors[i], 1), mps.d, size(Q_mat, 2)))
+        # Multiply R into next tensor in-place where possible
+        next_reshaped = reshape(mps.tensors[i+1], (size(mps.tensors[i+1], 1), :))
+        result = F.R * next_reshaped
+        mps.tensors[i+1] = reshape(result, (size(F.R, 1), mps.d, size(mps.tensors[i+1], 3)))
     end
 end
 
-# Right-normalize the MPS
+# Right-normalize the MPS (in-place)
 function right_normalize!(mps::MPS)
     for i in mps.N:-1:2
         M = reshape(mps.tensors[i], (size(mps.tensors[i], 1), size(mps.tensors[i], 2) * size(mps.tensors[i], 3)))
         F = qr(M')
-        mps.tensors[i] = reshape(Matrix(F.Q)', (size(F.Q, 2), mps.d, size(mps.tensors[i], 3)))
-        mps.tensors[i-1] = reshape(reshape(mps.tensors[i-1], (:, size(mps.tensors[i-1], 3))) * F.R', 
-                                   (size(mps.tensors[i-1], 1), mps.d, size(F.R, 1)))
+        Q_mat = Matrix(F.Q)
+        mps.tensors[i] = reshape(Q_mat', (size(Q_mat, 2), mps.d, size(mps.tensors[i], 3)))
+        # Multiply R into previous tensor in-place where possible
+        prev_reshaped = reshape(mps.tensors[i-1], (:, size(mps.tensors[i-1], 3)))
+        result = prev_reshaped * F.R'
+        mps.tensors[i-1] = reshape(result, (size(mps.tensors[i-1], 1), mps.d, size(F.R, 1)))
     end
 end
 

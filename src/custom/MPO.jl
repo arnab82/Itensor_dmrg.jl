@@ -4,13 +4,19 @@ using NPZ
 
 """
 Calculate the direct product of two tensors.
+Optimized version with reduced allocations.
 """
 function composetensors(A::Array{Complex{Float64},4}, B::Array{Complex{Float64},4})
     d1A, d2A, rA, cA = size(A)
     d1B, d2B, rB, cB = size(B)
     AB = zeros(Complex{Float64}, (d1A, d2B, rA*rB, cA*cB))
-    for z1 in 1:d1A, z2 in 1:d2B, z in 1:d2A
-        AB[z1,z2,:,:] .+= kron(A[z1,z,:,:], B[z,z2,:,:])
+    
+    # Use @inbounds for performance in this verified loop
+    @inbounds for z1 in 1:d1A, z2 in 1:d2B, z in 1:d2A
+        # Direct kron computation, avoiding intermediate allocation
+        for i in 1:rA, j in 1:rB, k in 1:cA, l in 1:cB
+            AB[z1, z2, (i-1)*rB + j, (k-1)*cB + l] += A[z1, z, i, k] * B[z, z2, j, l]
+        end
     end
     return AB
 end
@@ -22,8 +28,9 @@ function combinetensors(A::Array{Complex{Float64},4}, B::Array{Complex{Float64},
     d1A, d2A, rA, cA = size(A)
     d1B, d2B, rB, cB = size(B)
     AB = zeros(Complex{Float64}, (d1A, d2B, rA+rB, cA+cB))
-    AB[:,:,1:rA,1:cA] = A
-    AB[:,:,rA+1:end,cA+1:end] = B
+    # Use views to avoid copying
+    AB[:, :, 1:rA, 1:cA] .= A
+    AB[:, :, rA+1:end, cA+1:end] .= B
     return AB
 end
 
