@@ -1,3 +1,48 @@
+"""
+    Custom DMRG Tests for 2x2 Systems
+
+This test file provides comprehensive tests for the custom DMRG implementation
+with 2x2 lattice systems (4 sites total).
+
+## Running the Tests
+
+To run this test file directly:
+```bash
+julia --project=. test/custom_dmrg_2x2_test.jl
+```
+
+To run as part of the full test suite:
+```bash
+julia --project=. -e 'using Pkg; Pkg.test()'
+```
+
+## Test Coverage
+
+This file tests the following components:
+
+1. **2x2 Heisenberg Model**
+   - MPO construction and structure validation
+   - Random MPS initialization
+   - MPS normalization operations
+
+2. **2x2 Hubbard Model**
+   - MPO construction for 2D lattices
+   - DMRG convergence with different parameters
+   - Multiple U/t interaction ratios
+
+3. **Core DMRG Components**
+   - Environment cache initialization and updates
+   - Two-site tensor contractions (left and right moving)
+   - Effective Hamiltonian construction
+
+## Notes
+
+- For N=4 systems, the Heisenberg model uses a restricted sweep range (2:N-2),
+  which only contains one position. Full DMRG tests use the Hubbard model.
+- The tests verify both correctness and numerical stability of the custom DMRG.
+- All tests use small bond dimensions (χ_max ≤ 10) for fast execution.
+"""
+
 using Test
 using LinearAlgebra
 
