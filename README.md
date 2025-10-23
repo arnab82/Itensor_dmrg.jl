@@ -194,7 +194,7 @@ Itensor_dmrg.jl/
 ├── test/
 │   └── runtests.jl          # Test suite
 ├── Project.toml             # Package dependencies
-└── ReadME.md               # This file
+└── README.md                # This file
 ```
 
 ## Key Functions
