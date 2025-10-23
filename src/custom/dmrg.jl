@@ -199,25 +199,27 @@ function construct_effective_hamiltonian(cache::EnvironmentCache, H::MPO, mps::M
     H_i = H.tensor[i]
     H_iplus1 = H.tensor[i+1]
 
-    # Perform tensor contraction to build the effective Hamiltonian
-    # Contract H_i and H_i+1
-    H_two = zeros(Complex{Float64}, size(H_i, 1), size(H_i, 2), size(H_iplus1, 2), size(H_i, 3), size(H_iplus1, 3), size(H_iplus1, 4))
-    @einsum H_two[a, b, c, d, e, f] = H_i[a, b, d, g] * H_iplus1[g, c, e, f]
+    # Perform tensor contraction in a more memory-efficient way
+    # Instead of creating large intermediate arrays, contract step by step
+    
+    # Contract L with H_i: L[a,h,b] * H_i[h,c,d,g] -> temp1[a,b,c,d,g]
+    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_i, 2), size(H_i, 3), size(H_i, 4))
+    @tensor temp1[a, b, c, d, g] = L[a, h, b] * H_i[h, c, d, g]
+    
+    # Contract temp1 with H_iplus1: temp1[a,b,c,d,g] * H_iplus1[g,e,f,i] -> temp2[a,b,c,d,e,f,i]
+    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(H_iplus1, 2), size(H_iplus1, 3), size(H_iplus1, 4))
+    @tensor temp2[a, b, c, d, e, f, i] = temp1[a, b, c, d, g] * H_iplus1[g, e, f, i]
+    
+    # Contract temp2 with R: temp2[a,b,c,d,e,f,i] * R[g,i,h] -> result[a,b,c,d,e,f,g,h]
+    result = zeros(Complex{Float64}, size(temp2, 1), size(temp2, 2), size(temp2, 3), size(temp2, 4), size(temp2, 5), size(temp2, 6), size(R, 1), size(R, 3))
+    @tensor result[a, b, c, d, e, f, g, h] = temp2[a, b, c, d, e, f, i] * R[g, i, h]
 
-    # Contract with left environment
-    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
-    @tensor temp1[a, b, c, d, e, f, g] = L[a, h, b] * H_two[h, c, d, e, f, g]
-
-    # Contract with right environment
-    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
-    @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
-
-    # Reshape temp2 to construct the effective Hamiltonian H_eff
-    chi_L = size(temp2, 1)  # mps_left bond
-    chi_R = size(temp2, 7)  # mps_right bond
+    # Reshape result to construct the effective Hamiltonian H_eff
+    chi_L = size(result, 1)  # mps_left bond
+    chi_R = size(result, 7)  # mps_right bond
     # Permute and reshape in one step for efficiency
-    temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
-    H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
+    result_perm = permutedims(result, [2, 3, 5, 8, 1, 4, 6, 7])
+    H_eff = reshape(result_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
 end
@@ -232,24 +234,25 @@ function construct_effective_hamiltonian_left(cache::EnvironmentCache, H::MPO, m
     H_im1 = H.tensor[i - 1]
     H_i = H.tensor[i]
 
-    # Contract H_(i-1) and H_i
-    H_two = zeros(Complex{Float64}, size(H_im1, 1), size(H_im1, 2), size(H_i, 2), size(H_im1, 3), size(H_i, 3), size(H_i, 4))
-    @einsum H_two[a, b, c, d, e, f] = H_im1[a, b, d, g] * H_i[g, c, e, f]
+    # Perform tensor contraction in a more memory-efficient way
+    # Contract L with H_im1: L[a,h,b] * H_im1[h,c,d,g] -> temp1[a,b,c,d,g]
+    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_im1, 2), size(H_im1, 3), size(H_im1, 4))
+    @tensor temp1[a, b, c, d, g] = L[a, h, b] * H_im1[h, c, d, g]
     
-    # Contract with left environment
-    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
-    @tensor temp1[a, b, c, d, e, f, g] = L[a, h, b] * H_two[h, c, d, e, f, g]
-
-    # Contract with right environment
-    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
-    @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
+    # Contract temp1 with H_i: temp1[a,b,c,d,g] * H_i[g,e,f,i] -> temp2[a,b,c,d,e,f,i]
+    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(H_i, 2), size(H_i, 3), size(H_i, 4))
+    @tensor temp2[a, b, c, d, e, f, i] = temp1[a, b, c, d, g] * H_i[g, e, f, i]
     
-    # Reshape temp2 to construct the effective Hamiltonian H_eff
-    chi_L = size(temp2, 1)  # mps_left bond
-    chi_R = size(temp2, 7)  # mps_right bond
+    # Contract temp2 with R: temp2[a,b,c,d,e,f,i] * R[g,i,h] -> result[a,b,c,d,e,f,g,h]
+    result = zeros(Complex{Float64}, size(temp2, 1), size(temp2, 2), size(temp2, 3), size(temp2, 4), size(temp2, 5), size(temp2, 6), size(R, 1), size(R, 3))
+    @tensor result[a, b, c, d, e, f, g, h] = temp2[a, b, c, d, e, f, i] * R[g, i, h]
+    
+    # Reshape result to construct the effective Hamiltonian H_eff
+    chi_L = size(result, 1)  # mps_left bond
+    chi_R = size(result, 7)  # mps_right bond
     # Permute and reshape in one step for efficiency
-    temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
-    H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
+    result_perm = permutedims(result, [2, 3, 5, 8, 1, 4, 6, 7])
+    H_eff = reshape(result_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
 end
@@ -314,7 +317,7 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         χ_trunc = max(1, χ_trunc)
         
         # Calculate truncation error before truncation
-        @inbounds truncation_error = sum(abs2(S[i]) for i in (χ_trunc+1):length(S))
+        truncation_error = χ_trunc < length(S) ? sum(abs2(S[i]) for i in (χ_trunc+1):length(S)) : 0.0
         total_truncation_error += truncation_error
         
         # Truncate arrays
