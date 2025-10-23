@@ -68,9 +68,15 @@ This document describes the performance and memory optimizations implemented in 
 ### 1. Choose Appropriate Parameters
 
 ```julia
-# For small systems (N < 20 sites)
-sweeps = Sweeps(5)
-setmaxdim!(sweeps, 50, 100, 200)
+# For small systems (N < 20 sites, e.g., 4x4 lattice = 16 sites)
+# Use conservative bond dimensions to avoid memory issues
+sweeps = Sweeps(10)
+setmaxdim!(sweeps, 10, 20, 50, 100, 100)
+setcutoff!(sweeps, 1E-10)
+
+# For medium systems (N = 20-50 sites)
+sweeps = Sweeps(10)
+setmaxdim!(sweeps, 20, 50, 100, 200)
 setcutoff!(sweeps, 1E-10)
 
 # For large systems (N > 50 sites)
@@ -139,15 +145,18 @@ using BenchmarkTools
 
 Approximate memory usage for different system sizes:
 
-| System Size | Bond Dim (χ) | Physical Dim (d) | Memory (MB) |
-|-------------|--------------|------------------|-------------|
-| 16 sites    | 50           | 2 (spin-1/2)     | ~10-20      |
-| 16 sites    | 100          | 2 (spin-1/2)     | ~40-60      |
-| 16 sites    | 50           | 4 (fermion)      | ~40-80      |
-| 64 sites    | 50           | 2 (spin-1/2)     | ~80-120     |
-| 64 sites    | 100          | 2 (spin-1/2)     | ~200-300    |
+| System Size | Bond Dim (χ) | Physical Dim (d) | Memory (MB) | Notes |
+|-------------|--------------|------------------|-------------|-------|
+| 16 sites (4x4) | 50        | 2 (spin-1/2)     | ~10-20      | Safe for most systems |
+| 16 sites (4x4) | 100       | 2 (spin-1/2)     | ~40-60      | May cause issues on low-memory systems |
+| 16 sites (4x4) | 200       | 2 (spin-1/2)     | ~150-200    | **Not recommended** - likely to fail |
+| 16 sites    | 50           | 4 (fermion)      | ~40-80      | Hubbard model |
+| 64 sites    | 50           | 2 (spin-1/2)     | ~80-120     | |
+| 64 sites    | 100          | 2 (spin-1/2)     | ~200-300    | |
 
 Memory scales as: `O(N × χ² × d²)` where N is number of sites, χ is bond dimension, d is physical dimension.
+
+**Important**: For 4x4 lattices (16 sites), keep maximum bond dimension ≤ 100 to avoid out-of-memory errors.
 
 ## Optimization Checklist
 
@@ -171,9 +180,11 @@ Before running large-scale calculations:
 
 ### Issue: High memory usage
 **Solution**:
-- Reduce maximum bond dimension
+- Reduce maximum bond dimension (e.g., max 100 for 16-site systems)
 - Use stricter cutoff values
 - Enable silent mode to reduce I/O buffering
+- Use productMPS instead of randomMPS for initial state
+- For 4x4 lattices, avoid bond dimensions > 100
 
 ### Issue: Numerical instabilities
 **Solution**:
