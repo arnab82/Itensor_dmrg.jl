@@ -272,11 +272,10 @@ end
 
 function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbol, χ_max::Int, tol::Float64, hubbard=false)
     energy = 0.0
-    if hubbard==true
-        range = direction == :right ? (1:mps.N-1) : reverse(2:mps.N)
-    else
-        range = direction == :right ? (2:mps.N-2) : reverse(2:mps.N-2)
-    end
+    # For two-site DMRG, we optimize pairs of sites
+    # Right sweep: optimize (i, i+1) for i in 1:N-1
+    # Left sweep: optimize (i-1, i) for i in N:-1:2, which is equivalent to pairs (i, i+1) for i in (N-1):-1:1
+    range = direction == :right ? (1:mps.N-1) : reverse(2:mps.N)
     total_truncation_error = 0.0
     
     for i in range
@@ -305,9 +304,7 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         # Reshape ground state back to a tensor (same shape as two_site_tensor)
         ground_state = reshape(ground_state, size(two_site_tensor))
         
-        # Normalize the ground state (in-place where possible)
-        ground_state_norm = norm(ground_state)
-        ground_state ./= ground_state_norm
+        # Ground state from eigsolve is already normalized, no need to normalize again
         
         # Perform SVD and truncate
         F = svd(ground_state)
@@ -331,17 +328,53 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         if direction == :right
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
-            # Update cached environments after updating tensors
+            # Update left environments that depend on the updated tensors
+            # After updating sites i and i+1, we need to update L[i] and L[i+1]
             update_left_environment!(cache, H, mps, i)
+            if i+1 < mps.N
+                update_left_environment!(cache, H, mps, i+1)
+            end
         else
             mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_i_right))
-            # Update cached environments after updating tensors
+            # Update right environments that depend on the updated tensors
+            # After updating sites i-1 and i, we need to update R[i-1] and R[i]
             update_right_environment!(cache, H, mps, i)
+            if i-1 > 1
+                update_right_environment!(cache, H, mps, i-1)
+            end
         end
     end
     
     return real(energy), total_truncation_error, mps
+end
+
+# Function to compute the expectation value of the Hamiltonian with an MPS
+function compute_energy(H::MPO, mps::MPS)
+    N = mps.N
+    
+    # Contract: <mps|H|mps>
+    # Start from the left with a 1x1x1 tensor
+    E = ones(Complex{Float64}, 1, 1, 1)
+    
+    for i in 1:N
+        mps_i = mps.tensors[i]
+        mps_i_conj = conj(mps_i)
+        H_i = H.tensor[i]
+        
+        # Contract: E[bond_in, mpo_bond_in, bond_in'] * 
+        #           mps_i[bond_in, phys, bond_out] *
+        #           H_i[mpo_bond_in, phys, phys', mpo_bond_out] *
+        #           mps_i_conj[bond_in', phys', bond_out']
+        # Result: E_new[bond_out, mpo_bond_out, bond_out']
+        
+        E_temp = zeros(Complex{Float64}, size(mps_i, 3), size(H_i, 4), size(mps_i, 3))
+        @einsum E_temp[a, b, c] = E[χ1, χ2, χ3] * mps_i[χ1, d1, a] * H_i[χ2, d1, d2, b] * mps_i_conj[χ3, d2, c]
+        E = E_temp
+    end
+    
+    # Final result should be a 1x1x1 tensor
+    return real(E[1,1,1])
 end
 
 
@@ -349,47 +382,41 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     energy = 0.0
     prev_energy = 0.0
     
-    # Initialize environment cache
-    cache = EnvironmentCache()
-    initialize_cache!(cache, H, mps)
-    
     for sweep in 1:max_sweeps
+        # Initialize environment cache at the start of each sweep
+        cache = EnvironmentCache()
+        initialize_cache!(cache, H, mps)
+        
         # Right sweep
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Only reinitialize cache if truncation was significant or first sweep
-        # This saves computation while maintaining accuracy
-        if sweep == 1 || trunc_error_right > tol * 10
-            initialize_cache!(cache, H, mps)
-        end
+        # Reinitialize cache before left sweep
+        initialize_cache!(cache, H, mps)
         
         # Left sweep
         energy_left, trunc_error_left, mps = dmrg_sweep!(H, mps, cache, :left, χ_max, tol, hubbard)
         
-        # Only reinitialize if needed (not on last sweep and if truncation significant)
-        if sweep < max_sweeps && trunc_error_left > tol * 10
-            initialize_cache!(cache, H, mps)
-        end
-        
         # Total truncation error for this sweep
         total_truncation_error = trunc_error_right + trunc_error_left
         
+        # Compute the actual energy of the MPS (expectation value of H)
+        current_energy = compute_energy(H, mps)
+        
         # Check for convergence based on energy change
-        energy_change = abs(energy_left - prev_energy)
-        avg_sweep_energy = (energy_right + energy_left) / 2
+        energy_change = abs(current_energy - prev_energy)
         
         @printf("Sweep %d completed. Energy = %.12f, Energy Change = %.12e, Truncation Error = %.12e\n", 
-                sweep, avg_sweep_energy, energy_change, total_truncation_error)
+                sweep, current_energy, energy_change, total_truncation_error)
         
         # Check convergence
         if sweep > 1 && energy_change < tol
             @printf("Converged after %d sweeps. Final Energy = %.12f, Final Truncation Error = %.12e\n", 
-                    sweep, energy_left, total_truncation_error)
-            return energy_left, mps
+                    sweep, current_energy, total_truncation_error)
+            return current_energy, mps
         end
         
         # Update energy
-        prev_energy = energy_left
+        prev_energy = current_energy
     end
     
     @warn "DMRG did not converge within the maximum number of sweeps."
