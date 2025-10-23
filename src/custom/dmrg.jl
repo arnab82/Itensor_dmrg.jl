@@ -199,10 +199,10 @@ function construct_effective_hamiltonian(cache::EnvironmentCache, H::MPO, mps::M
     H_i = H.tensor[i]
     H_iplus1 = H.tensor[i+1]
 
-    # Perform tensor contraction to build the effective Hamiltonian
-    # Contract H_i and H_i+1
+    # Contract H_i and H_i+1 first (this preserves the original logic)
+    # But use @tensor instead of @einsum for better performance
     H_two = zeros(Complex{Float64}, size(H_i, 1), size(H_i, 2), size(H_iplus1, 2), size(H_i, 3), size(H_iplus1, 3), size(H_iplus1, 4))
-    @einsum H_two[a, b, c, d, e, f] = H_i[a, b, d, g] * H_iplus1[g, c, e, f]
+    @tensor H_two[a, b, c, d, e, f] = H_i[a, b, d, g] * H_iplus1[g, c, e, f]
 
     # Contract with left environment
     temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
@@ -232,9 +232,10 @@ function construct_effective_hamiltonian_left(cache::EnvironmentCache, H::MPO, m
     H_im1 = H.tensor[i - 1]
     H_i = H.tensor[i]
 
-    # Contract H_(i-1) and H_i
+    # Contract H_(i-1) and H_i (preserving original logic)
+    # Use @tensor instead of @einsum for better performance
     H_two = zeros(Complex{Float64}, size(H_im1, 1), size(H_im1, 2), size(H_i, 2), size(H_im1, 3), size(H_i, 3), size(H_i, 4))
-    @einsum H_two[a, b, c, d, e, f] = H_im1[a, b, d, g] * H_i[g, c, e, f]
+    @tensor H_two[a, b, c, d, e, f] = H_im1[a, b, d, g] * H_i[g, c, e, f]
     
     # Contract with left environment
     temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
@@ -259,8 +260,12 @@ end
 
 # Function to solve the eigenvalue problem
 function eigsolve(H_eff::Matrix{ComplexF64}, init_state::Vector{ComplexF64}, num_eigvals::Int, which_eigvals::Symbol)
-    # Use KrylovKit's eigsolve function
-    vals, vecs, info = KrylovKit.eigsolve(H_eff, init_state, num_eigvals, which_eigvals)
+    # Use KrylovKit's eigsolve function with improved parameters for better convergence
+    vals, vecs, info = KrylovKit.eigsolve(H_eff, init_state, num_eigvals, which_eigvals;
+                                          tol=1e-10,          # Tighter tolerance
+                                          krylovdim=30,       # Larger Krylov subspace
+                                          maxiter=200,        # More iterations allowed
+                                          ishermitian=true)   # Hamiltonian should be Hermitian
     return vals[1], vecs[1]  # Return the ground state energy and wavefunction
 end
 
@@ -314,7 +319,7 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         χ_trunc = max(1, χ_trunc)
         
         # Calculate truncation error before truncation
-        @inbounds truncation_error = sum(abs2(S[i]) for i in (χ_trunc+1):length(S))
+        truncation_error = χ_trunc < length(S) ? sum(abs2(S[i]) for i in (χ_trunc+1):length(S)) : 0.0
         total_truncation_error += truncation_error
         
         # Truncate arrays

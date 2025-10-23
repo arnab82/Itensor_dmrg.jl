@@ -76,7 +76,7 @@ H = hubbard(Nx=Nx, Ny=Ny, t=t, U=U, yperiodic=false)
 mps = random_mps(Nx * Ny, 4, χ_max)  # 4 corresponds to local dimension `d`
 
 # Run the DMRG algorithm
-energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol,hubbard)
+energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol, true)
 
 # println("Ground state energy: ", energy)
 
