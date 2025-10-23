@@ -26,7 +26,7 @@ state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
 ψ = randomMPS(s, state)
 # DMRG parameters
 sweeps = Sweeps(10)
-setmaxdim!(sweeps, 10, 20, 100, 100, 200)
+setmaxdim!(sweeps, 10, 20, 50, 100, 100)
 setcutoff!(sweeps, 1E-10)
 
 # Run DMRG
@@ -37,7 +37,7 @@ println("Ground state energy = ", energy)
 # Calculate magnetization
 Sz_total = sum(expect(ψ, "Sz"))
 println("Total Sz = ", Sz_total)
-energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2, maxdim=2, cutoff=1E-6)
-println("Ground state energy = ", energy)
 
-display(ψ)
+# Optionally run custom simple_dmrg for comparison (using reasonable bond dimension)
+# energy2, ψ2 = Itensor_dmrg.simple_dmrg(H, ψ, 2, maxdim=50, cutoff=1E-8)
+# println("Ground state energy (simple_dmrg) = ", energy2)

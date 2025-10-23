@@ -102,7 +102,7 @@ state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
 
 # Set up DMRG sweeps
 sweeps = Sweeps(10)
-setmaxdim!(sweeps, 10, 20, 100, 100, 200)
+setmaxdim!(sweeps, 10, 20, 50, 100, 100)
 setcutoff!(sweeps, 1E-10)
 
 # Run DMRG using ITensors built-in function
@@ -110,7 +110,7 @@ energy, ψ = dmrg(H, ψ, sweeps)
 println("Ground state energy = ", energy)
 
 # Or use the custom simple DMRG implementation
-energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2; maxdim=10, cutoff=1E-6)
+energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2; maxdim=50, cutoff=1E-8)
 println("Ground state energy = ", energy)
 
 # For production runs, use silent mode to reduce I/O overhead
@@ -145,7 +145,7 @@ state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
 
 # DMRG calculation
 sweeps = Sweeps(10)
-setmaxdim!(sweeps, 10, 20, 100, 100, 200)
+setmaxdim!(sweeps, 10, 20, 50, 100, 100)
 setcutoff!(sweeps, 1E-10)
 
 energy, ψ = dmrg(H, ψ, sweeps)
