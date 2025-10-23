@@ -71,7 +71,7 @@ function simple_dmrg(H::MPO, psi0::MPS, nsweeps::Int; maxdim::Int=50, cutoff::Fl
     N = length(psi)
     #orthogonalize the MPS
     if !isortho(psi) || orthocenter(psi) != 1
-        psi = orthogonalize!(PH, psi, 1)
+        psi = ITensors.orthogonalize(psi, 1)
     end
     # Calculate initial memory usage
     initial_mem = sum(sizeof, psi) + sizeof(H)
