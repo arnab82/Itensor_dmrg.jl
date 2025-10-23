@@ -114,8 +114,8 @@ energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2; maxdim=10, cutoff=1E-6)
 println("Ground state energy = ", energy)
 
 # For production runs, use silent mode to reduce I/O overhead
-energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 10; maxdim=100, cutoff=1E-8, silent=true)
-println("Ground state energy = ", energy)
+energy_opt, ψ_opt = Itensor_dmrg.simple_dmrg(H, ψ, 10; maxdim=100, cutoff=1E-8, silent=true)
+println("Optimized ground state energy = ", energy_opt)
 ```
 
 ### Hubbard Model Example
