@@ -213,10 +213,14 @@ function construct_effective_hamiltonian(cache::EnvironmentCache, H::MPO, mps::M
     @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
 
     # Reshape temp2 to construct the effective Hamiltonian H_eff
-    chi_L = size(temp2, 1)  # mps_left bond
-    chi_R = size(temp2, 7)  # mps_right bond
-    # Permute and reshape in one step for efficiency
-    temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
+    # temp2[mps_L_bra, mps_L_ket, phys_i_out, phys_{i+1}_out, phys_i_in, phys_{i+1}_in, mps_R_bra, mps_R_ket]
+    # Need to reshape to H[bra_indices, ket_indices] where:
+    # - bra_indices = [mps_L_bra, phys_i_out, phys_{i+1}_out, mps_R_bra]
+    # - ket_indices = [mps_L_ket, phys_i_in, phys_{i+1}_in, mps_R_ket]
+    chi_L = size(temp2, 1)  # mps_left bond (bra)
+    chi_R = size(temp2, 7)  # mps_right bond (bra)
+    # Permute to [mps_L_bra, phys_i_out, phys_{i+1}_out, mps_R_bra, mps_L_ket, phys_i_in, phys_{i+1}_in, mps_R_ket]
+    temp2_perm = permutedims(temp2, [1, 3, 4, 7, 2, 5, 6, 8])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
@@ -246,10 +250,14 @@ function construct_effective_hamiltonian_left(cache::EnvironmentCache, H::MPO, m
     @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
     
     # Reshape temp2 to construct the effective Hamiltonian H_eff
-    chi_L = size(temp2, 1)  # mps_left bond
-    chi_R = size(temp2, 7)  # mps_right bond
-    # Permute and reshape in one step for efficiency
-    temp2_perm = permutedims(temp2, [2, 3, 4, 8, 1, 5, 6, 7])
+    # temp2[mps_L_bra, mps_L_ket, phys_{i-1}_out, phys_i_out, phys_{i-1}_in, phys_i_in, mps_R_bra, mps_R_ket]
+    # Need to reshape to H[bra_indices, ket_indices] where:
+    # - bra_indices = [mps_L_bra, phys_{i-1}_out, phys_i_out, mps_R_bra]
+    # - ket_indices = [mps_L_ket, phys_{i-1}_in, phys_i_in, mps_R_ket]
+    chi_L = size(temp2, 1)  # mps_left bond (bra)
+    chi_R = size(temp2, 7)  # mps_right bond (bra)
+    # Permute to [mps_L_bra, phys_{i-1}_out, phys_i_out, mps_R_bra, mps_L_ket, phys_{i-1}_in, phys_i_in, mps_R_ket]
+    temp2_perm = permutedims(temp2, [1, 3, 4, 7, 2, 5, 6, 8])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
@@ -335,14 +343,15 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
                 update_left_environment!(cache, H, mps, i+1)
             end
         else
-            mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
-            mps.tensors[i] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_i_right))
+            mps.tensors[i-1] = reshape(U * Diagonal(S_trunc), (chi_iminus1_left, mps.d, χ_trunc))
+            mps.tensors[i] = reshape(Vt, (χ_trunc, mps.d, chi_i_right))
             # Update right environments that depend on the updated tensors
-            # After updating sites i-1 and i, we need to update R[i-1] and R[i]
-            update_right_environment!(cache, H, mps, i)
-            if i-1 > 1
-                update_right_environment!(cache, H, mps, i-1)
+            # After updating sites i-1 and i, we need to update R[i] and R[i-1]
+            # Order matters: R[i-1] depends on R[i], so update R[i] first
+            if i < mps.N
+                update_right_environment!(cache, H, mps, i+1)  # This updates R[i] using R[i+1]
             end
+            update_right_environment!(cache, H, mps, i)  # This updates R[i-1] using R[i]
         end
     end
     
