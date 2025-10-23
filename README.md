@@ -68,8 +68,7 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 ```julia
 using ITensors
 using ITensorMPS
-include("src/Itensor/Itensor_dmrg.jl")
-using .Itensor_dmrg
+using Itensor_dmrg
 
 # Define lattice parameters
 Nx, Ny = 4, 4  # 4x4 lattice
@@ -110,8 +109,7 @@ println("Ground state energy = ", energy)
 ```julia
 using ITensors
 using ITensorMPS
-include("src/Itensor/Itensor_dmrg.jl")
-using .Itensor_dmrg
+using Itensor_dmrg
 
 # Define lattice parameters
 Nx, Ny = 4, 4
@@ -125,7 +123,7 @@ U = 4.0  # On-site interaction
 sites = siteinds("Electron", N; conserve_qns=true)
 
 # Create Hubbard Hamiltonian (MPO)
-H = Itensor_dmrg.hubbard_hamiltonian(sites, t, U)
+H = Itensor_dmrg.hubbard_hamiltonian(sites, t, U, Nx, Ny)
 
 # Define initial state (half-filling with alternating spins)
 state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
