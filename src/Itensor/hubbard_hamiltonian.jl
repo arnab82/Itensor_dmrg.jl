@@ -4,15 +4,19 @@ using LinearAlgebra
 
 # The Hubbard Hamiltonian for a 2D square lattice
 """
-    hubbard_hamiltonian(s::Vector{Index{Vector{Pair{QN,Int64}}}}, t::Float64, U::Float64)
+    hubbard_hamiltonian(s::Vector{Index{Vector{Pair{QN,Int64}}}}, t::Float64, U::Float64, Nx::Int, Ny::Int)
     Args:
         s: Vector of site indices for the lattice with fermion conservation
         t: Hopping parameter
         U: On-site interaction parameter
+        Nx: Number of sites in x-direction
+        Ny: Number of sites in y-direction
     Returns:
         H: Hubbard Hamiltonian as an MPO
 """
-function hubbard_hamiltonian(s::Vector{Index{Vector{Pair{QN,Int64}}}}, t::Float64, U::Float64)
+function hubbard_hamiltonian(s::Vector{Index{Vector{Pair{QN,Int64}}}}, t::Float64, U::Float64, Nx::Int, Ny::Int)
+    N = length(s)  # Total number of sites
+    
     # Initialize an OpSum to store the terms of the Hamiltonian
     os = OpSum()
     
