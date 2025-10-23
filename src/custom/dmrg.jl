@@ -328,17 +328,21 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         if direction == :right
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
-            # Update cached environments after updating tensors
+            # Update left environments that depend on the updated tensors
+            # After updating sites i and i+1, we need to update L[i] and L[i+1]
             update_left_environment!(cache, H, mps, i)
-            # Also update right environment at i+1 since tensor i+1 changed
-            update_right_environment!(cache, H, mps, i+1)
+            if i+1 < mps.N
+                update_left_environment!(cache, H, mps, i+1)
+            end
         else
             mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_i_right))
-            # Update cached environments after updating tensors
+            # Update right environments that depend on the updated tensors
+            # After updating sites i-1 and i, we need to update R[i-1] and R[i]
             update_right_environment!(cache, H, mps, i)
-            # Also update left environment at i-1 since tensor i-1 changed
-            update_left_environment!(cache, H, mps, i-1)
+            if i-1 > 1
+                update_right_environment!(cache, H, mps, i-1)
+            end
         end
     end
     
@@ -378,27 +382,19 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     energy = 0.0
     prev_energy = 0.0
     
-    # Initialize environment cache
-    cache = EnvironmentCache()
-    initialize_cache!(cache, H, mps)
-    
     for sweep in 1:max_sweeps
+        # Initialize environment cache at the start of each sweep
+        cache = EnvironmentCache()
+        initialize_cache!(cache, H, mps)
+        
         # Right sweep
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Only reinitialize cache if truncation was significant or first sweep
-        # This saves computation while maintaining accuracy
-        if sweep == 1 || trunc_error_right > tol * 10
-            initialize_cache!(cache, H, mps)
-        end
+        # Reinitialize cache before left sweep
+        initialize_cache!(cache, H, mps)
         
         # Left sweep
         energy_left, trunc_error_left, mps = dmrg_sweep!(H, mps, cache, :left, χ_max, tol, hubbard)
-        
-        # Only reinitialize if needed (not on last sweep and if truncation significant)
-        if sweep < max_sweeps && trunc_error_left > tol * 10
-            initialize_cache!(cache, H, mps)
-        end
         
         # Total truncation error for this sweep
         total_truncation_error = trunc_error_right + trunc_error_left
