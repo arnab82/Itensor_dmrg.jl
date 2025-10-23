@@ -17,13 +17,10 @@ s = siteinds("S=1/2", N)
 # Convert OpSum to MPO
 H = MPO(H_heisenberg, s)
 
-# # Create an initial MPS (all spins up)
-# ψ = productMPS(s, "Up")
-
 # Create a random initial MPS in the Sz = 0 sector
 N = length(s)
 state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
-ψ = randomMPS(s, state)
+ψ = productMPS(s, state)
 # DMRG parameters
 sweeps = Sweeps(10)
 setmaxdim!(sweeps, 10, 20, 50, 100, 100)
