@@ -339,18 +339,14 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
             # Update left environment after moving the orthogonality center
-            # After optimizing sites i and i+1, site i is now left-canonical
-            # and the orthogonality center has moved to i+1
-            # We only need to update L[i] for the next optimization step
+            # We only update L[i] which will be needed for the next optimization
             update_left_environment!(cache, H, mps, i)
         else
             mps.tensors[i-1] = reshape(U * Diagonal(S_trunc), (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Vt, (χ_trunc, mps.d, chi_i_right))
             # Update right environment after moving the orthogonality center
-            # After optimizing sites i-1 and i, site i is now right-canonical
-            # and the orthogonality center has moved to i-1
-            # We only need to update R[i-1] for the next optimization step
-            update_right_environment!(cache, H, mps, i)    # Updates R[i-1] using mps.tensors[i] and R[i]
+            # We only update R[i-1] which will be needed for the next optimization
+            update_right_environment!(cache, H, mps, i)
         end
     end
     
@@ -391,22 +387,19 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     prev_energy = 0.0
     
     # Put MPS in right-canonical form initially
-    # This ensures sites 2 to N are right-orthogonal, with norm concentrated at site 1
-    # This is the proper canonical form for starting the first right sweep
     right_normalize!(mps)
     
+    # Initialize environment cache once at the start
+    cache = EnvironmentCache()
+    
     for sweep in 1:max_sweeps
-        # Initialize environment cache for right sweep
-        # We need all L[i] (left environments) and all R[i] (right environments)
-        cache = EnvironmentCache()
+        # Rebuild environments at start of each full sweep (right + left)
         initialize_cache!(cache, H, mps)
         
         # Right sweep
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Reinitialize cache for left sweep
-        # After right sweep, all R[i] are stale, so we need to rebuild them
-        cache = EnvironmentCache()
+        # Rebuild environments before left sweep since all R[i] are now stale
         initialize_cache!(cache, H, mps)
         
         # Left sweep
