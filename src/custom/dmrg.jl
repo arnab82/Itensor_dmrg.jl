@@ -358,11 +358,27 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         if direction == :right
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
-            # No need to update environments - they will be recomputed at start of next sweep
+            # Update left environment after moving the orthogonality center
+            # L[i] depends on mps.tensors[i] and L[i-1]
+            # L[i+1] depends on mps.tensors[i+1] and L[i]
+            # After updating both tensors, we must update L[i] first (using the unchanged L[i-1]),
+            # then update L[i+1] (using the freshly computed L[i])
+            update_left_environment!(cache, H, mps, i)
+            if i+1 < mps.N
+                update_left_environment!(cache, H, mps, i+1)
+            end
         else
             mps.tensors[i-1] = reshape(U * Diagonal(S_trunc), (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Vt, (χ_trunc, mps.d, chi_i_right))
-            # No need to update environments - they will be recomputed at start of next sweep
+            # Update right environment after moving the orthogonality center
+            # R[i] depends on mps.tensors[i] and R[i+1]
+            # R[i-1] depends on mps.tensors[i-1] and R[i]
+            # After updating both tensors, we must update R[i] first (using the unchanged R[i+1]),
+            # then update R[i-1] (using the freshly computed R[i])
+            if i < mps.N
+                update_right_environment!(cache, H, mps, i+1)  # Updates R[i] using R[i+1]
+            end
+            update_right_environment!(cache, H, mps, i)  # Updates R[i-1] using updated R[i]
         end
     end
     
@@ -415,7 +431,7 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
         # Right sweep
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Rebuild environments before left sweep since R[i] environments are now stale
+        # Rebuild environments before left sweep
         initialize_cache!(cache, H, mps)
         
         # Left sweep
