@@ -391,6 +391,10 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     energy = 0.0
     prev_energy = 0.0
     
+    # Put MPS in right-canonical form initially (all sites right-orthogonal)
+    # This ensures the MPS is properly normalized for the first right sweep
+    right_normalize!(mps)
+    
     for sweep in 1:max_sweeps
         # Initialize environment cache at the start of each sweep
         cache = EnvironmentCache()
