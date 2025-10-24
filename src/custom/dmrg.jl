@@ -391,8 +391,9 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     energy = 0.0
     prev_energy = 0.0
     
-    # Put MPS in right-canonical form initially (all sites right-orthogonal)
-    # This ensures the MPS is properly normalized for the first right sweep
+    # Put MPS in right-canonical form initially
+    # This ensures sites 2 to N are right-orthogonal, with norm concentrated at site 1
+    # This is the proper canonical form for starting the first right sweep
     right_normalize!(mps)
     
     for sweep in 1:max_sweeps
