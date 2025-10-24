@@ -318,8 +318,10 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         F = svd(ground_state)
         U, S, Vt = F.U, F.S, F.Vt
         
-        # Truncate bond dimension: keep at most χ_max singular values above tolerance
-        χ_trunc = min(χ_max, length(S), count(>(tol), S))
+        # Truncate bond dimension: keep at most χ_max singular values above a small threshold
+        # We use a much smaller threshold than tol (energy convergence) to avoid losing important states
+        svd_threshold = 1e-14  # Keep singular values above machine precision
+        χ_trunc = min(χ_max, length(S), count(>(svd_threshold), S))
         # Ensure at least one singular value is kept
         χ_trunc = max(1, χ_trunc)
         
@@ -336,22 +338,15 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         if direction == :right
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
-            # Update left environments that depend on the updated tensors
-            # After updating sites i and i+1, we need to update L[i] and L[i+1]
+            # Update left environment after moving the orthogonality center
+            # We only update L[i] which will be needed for the next optimization
             update_left_environment!(cache, H, mps, i)
-            if i+1 < mps.N
-                update_left_environment!(cache, H, mps, i+1)
-            end
         else
             mps.tensors[i-1] = reshape(U * Diagonal(S_trunc), (chi_iminus1_left, mps.d, χ_trunc))
             mps.tensors[i] = reshape(Vt, (χ_trunc, mps.d, chi_i_right))
-            # Update right environments that depend on the updated tensors
-            # After updating sites i-1 and i, we need to update R[i-1] and R[i-2]
-            # Order matters: R[i-2] depends on R[i-1], so update R[i-1] first
-            update_right_environment!(cache, H, mps, i)    # Updates R[i-1] using mps.tensors[i] and R[i]
-            if i > 2
-                update_right_environment!(cache, H, mps, i-1)  # Updates R[i-2] using mps.tensors[i-1] and R[i-1]
-            end
+            # Update right environment after moving the orthogonality center
+            # We only update R[i-1] which will be needed for the next optimization
+            update_right_environment!(cache, H, mps, i)
         end
     end
     
@@ -392,19 +387,19 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     prev_energy = 0.0
     
     # Put MPS in right-canonical form initially
-    # This ensures sites 2 to N are right-orthogonal, with norm concentrated at site 1
-    # This is the proper canonical form for starting the first right sweep
     right_normalize!(mps)
     
+    # Initialize environment cache once at the start
+    cache = EnvironmentCache()
+    
     for sweep in 1:max_sweeps
-        # Initialize environment cache at the start of each sweep
-        cache = EnvironmentCache()
+        # Rebuild environments at start of each full sweep (right + left)
         initialize_cache!(cache, H, mps)
         
         # Right sweep
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Reinitialize cache before left sweep (all environments become stale after right sweep)
+        # Rebuild environments before left sweep since all R[i] are now stale
         initialize_cache!(cache, H, mps)
         
         # Left sweep
