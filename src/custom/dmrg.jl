@@ -558,19 +558,6 @@ function dmrg_sweep_single_site!(H::MPO, mps::MPS, cache::EnvironmentCache, dire
         
         # Reshape ground state back to a tensor
         mps.tensors[i] = reshape(ground_state, (chi_left, mps.d, chi_right))
-        
-        # Update environments incrementally
-        if direction == :right
-            # Moving right: update left environment
-            if i < mps.N
-                update_left_environment!(cache, H, mps, i)
-            end
-        else
-            # Moving left: update right environment
-            if i > 1
-                update_right_environment!(cache, H, mps, i)
-            end
-        end
     end
     
     return real(energy), mps
@@ -616,8 +603,9 @@ function dmrg_single_site(H::MPO, mps::MPS, max_sweeps::Int, tol::Float64)
     energy = 0.0
     prev_energy = 0.0
     
-    # Note: We do NOT normalize the MPS here to preserve bond dimensions
-    # Single-site DMRG works with the MPS as-is and preserves bond dimensions
+    # NOTE: We do NOT normalize the MPS here to preserve the state from two-site DMRG
+    # Single-site DMRG works best when used for refinement after two-site DMRG
+    # and should use the MPS as-is to avoid changing bond dimensions
     
     # Initialize environment cache once at the start
     cache = EnvironmentCache()
