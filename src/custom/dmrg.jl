@@ -463,3 +463,198 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     @warn "DMRG did not converge within the maximum number of sweeps."
     return prev_energy, mps
 end
+
+
+# ============================================================================
+# Single-Site DMRG Implementation
+# ============================================================================
+
+"""
+    construct_effective_hamiltonian_single_site(cache::EnvironmentCache, H::MPO, mps::MPS, i::Int)
+
+Construct the effective Hamiltonian for a single-site DMRG optimization using cached environments.
+
+This function builds the effective Hamiltonian for site i in a Matrix Product State (MPS) 
+with respect to a Matrix Product Operator (MPO) Hamiltonian, using pre-computed left and right environments.
+
+# Arguments
+- `cache::EnvironmentCache`: Cache containing pre-computed environments
+- `H::MPO`: The Hamiltonian in MPO form
+- `mps::MPS`: The current Matrix Product State
+- `i::Int`: The index of the site to optimize
+
+# Returns
+- `H_eff::Matrix{Complex{Float64}}`: The effective Hamiltonian as a matrix
+"""
+function construct_effective_hamiltonian_single_site(cache::EnvironmentCache, H::MPO, mps::MPS, i::Int)
+    # Get left and right environments from cache
+    L = cache.L[i-1]
+    R = cache.R[i]
+
+    d = size(mps.tensors[i], 2)
+    H_i = H.tensor[i]
+
+    # Contract with left environment
+    # L[chi_L_bra, mpo_L, chi_L_ket] * H_i[mpo_L, phys_in, phys_out, mpo_R]
+    # Result: temp1[chi_L_bra, chi_L_ket, phys_in, phys_out, mpo_R]
+    temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_i, 2), size(H_i, 3), size(H_i, 4))
+    @tensor temp1[a, b, c, d, e] = L[a, f, b] * H_i[f, c, d, e]
+
+    # Contract with right environment
+    # temp1[chi_L_bra, chi_L_ket, phys_in, phys_out, mpo_R] * R[chi_R_bra, mpo_R, chi_R_ket]
+    # Result: temp2[chi_L_bra, chi_L_ket, phys_in, phys_out, chi_R_bra, chi_R_ket]
+    temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(R, 1), size(R, 3))
+    @tensor temp2[a, b, c, d, e, f] = temp1[a, b, c, d, g] * R[e, g, f]
+
+    # Reshape temp2 to construct the effective Hamiltonian H_eff
+    # temp2[chi_L_bra, chi_L_ket, phys_in, phys_out, chi_R_bra, chi_R_ket]
+    # Need to reshape to H[bra_indices, ket_indices] where:
+    # - bra_indices = [chi_L_bra, phys_out, chi_R_bra]
+    # - ket_indices = [chi_L_ket, phys_in, chi_R_ket]
+    chi_L = size(temp2, 1)
+    chi_R = size(temp2, 5)
+    # Permute to [chi_L_bra, phys_out, chi_R_bra, chi_L_ket, phys_in, chi_R_ket]
+    temp2_perm = permutedims(temp2, [1, 4, 5, 2, 3, 6])
+    H_eff = reshape(temp2_perm, (chi_L * d * chi_R, chi_L * d * chi_R))
+
+    return H_eff
+end
+
+
+"""
+    dmrg_sweep_single_site!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbol)
+
+Perform a single DMRG sweep using single-site optimization.
+
+In single-site DMRG, we optimize one site at a time without changing bond dimensions.
+This is faster than two-site DMRG but cannot increase bond dimensions during optimization.
+
+# Arguments
+- `H::MPO`: The Hamiltonian MPO
+- `mps::MPS`: The current MPS (modified in-place)
+- `cache::EnvironmentCache`: Environment cache
+- `direction::Symbol`: Either `:right` (left-to-right sweep) or `:left` (right-to-left sweep)
+
+# Returns
+- `energy::Float64`: The energy from the last site optimization
+- `mps::MPS`: The updated MPS
+"""
+function dmrg_sweep_single_site!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbol)
+    energy = 0.0
+    range = direction == :right ? (1:mps.N) : reverse(1:mps.N)
+    
+    for i in range
+        # Construct effective Hamiltonian for single site
+        H_eff = construct_effective_hamiltonian_single_site(cache, H, mps, i)
+        
+        # Current site tensor as a vector
+        site_tensor = mps.tensors[i]
+        chi_left = size(site_tensor, 1)
+        chi_right = size(site_tensor, 3)
+        site_vec = vec(site_tensor)
+        
+        # Solve for ground state using eigsolve
+        energy, ground_state = eigsolve(H_eff, site_vec, 1, :SR)
+        
+        # Reshape ground state back to a tensor
+        mps.tensors[i] = reshape(ground_state, (chi_left, mps.d, chi_right))
+        
+        # Update environments incrementally
+        if direction == :right
+            # Moving right: update left environment
+            if i < mps.N
+                update_left_environment!(cache, H, mps, i)
+            end
+        else
+            # Moving left: update right environment
+            if i > 1
+                update_right_environment!(cache, H, mps, i)
+            end
+        end
+    end
+    
+    return real(energy), mps
+end
+
+
+"""
+    dmrg_single_site(H::MPO, mps::MPS, max_sweeps::Int, tol::Float64)
+
+Perform DMRG optimization using single-site algorithm.
+
+Single-site DMRG optimizes one site at a time without changing bond dimensions.
+This is an alternative to two-site DMRG that is faster but cannot dynamically 
+adjust bond dimensions during optimization.
+
+# Arguments
+- `H::MPO`: The Hamiltonian in MPO form
+- `mps::MPS`: Initial MPS guess (bond dimensions are fixed)
+- `max_sweeps::Int`: Maximum number of DMRG sweeps
+- `tol::Float64`: Convergence tolerance for energy change
+
+# Returns
+- `energy::Float64`: The ground state energy
+- `mps::MPS`: The optimized MPS
+
+# Notes
+- The bond dimensions of the MPS are not changed during optimization
+- For increasing bond dimensions, use the two-site `dmrg` function instead
+- Single-site DMRG is typically faster per sweep than two-site DMRG
+- Good for refinement after initial two-site DMRG optimization
+
+# Example
+```julia
+# Create Hamiltonian and initial MPS with fixed bond dimension
+H = heisenberg_ham(N, d, χ_mpo)
+mps = random_MPS(N, d, χ_mps)
+
+# Optimize with single-site DMRG
+energy, optimized_mps = dmrg_single_site(H, mps, 50, 1e-8)
+```
+"""
+function dmrg_single_site(H::MPO, mps::MPS, max_sweeps::Int, tol::Float64)
+    energy = 0.0
+    prev_energy = 0.0
+    
+    # Note: We do NOT normalize the MPS here to preserve bond dimensions
+    # Single-site DMRG works with the MPS as-is and preserves bond dimensions
+    
+    # Initialize environment cache once at the start
+    cache = EnvironmentCache()
+    
+    for sweep in 1:max_sweeps
+        # Rebuild environments at start of each full sweep (right + left)
+        initialize_cache!(cache, H, mps)
+        
+        # Right sweep
+        energy_right, mps = dmrg_sweep_single_site!(H, mps, cache, :right)
+        
+        # Rebuild environments before left sweep
+        initialize_cache!(cache, H, mps)
+        
+        # Left sweep
+        energy_left, mps = dmrg_sweep_single_site!(H, mps, cache, :left)
+        
+        # Compute the actual energy of the MPS (expectation value of H)
+        current_energy = compute_energy(H, mps)
+        
+        # Check for convergence based on energy change
+        energy_change = abs(current_energy - prev_energy)
+        
+        @printf("Single-site DMRG Sweep %d completed. Energy = %.12f, Energy Change = %.12e\n", 
+                sweep, current_energy, energy_change)
+        
+        # Check convergence
+        if sweep > 1 && energy_change < tol
+            @printf("Single-site DMRG converged after %d sweeps. Final Energy = %.12f\n", 
+                    sweep, current_energy)
+            return current_energy, mps
+        end
+        
+        # Update energy
+        prev_energy = current_energy
+    end
+    
+    @warn "Single-site DMRG did not converge within the maximum number of sweeps."
+    return prev_energy, mps
+end
