@@ -399,7 +399,7 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
         # Right sweep
         energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
         
-        # Reinitialize cache before left sweep
+        # Reinitialize cache before left sweep (all environments become stale after right sweep)
         initialize_cache!(cache, H, mps)
         
         # Left sweep
