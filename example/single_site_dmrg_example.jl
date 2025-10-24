@@ -6,9 +6,15 @@ for a 1D Heisenberg spin chain.
 
 Single-site DMRG is faster than two-site DMRG but preserves bond dimensions,
 making it ideal for refinement after initial optimization.
+
+To run this example:
+    julia --project=. example/single_site_dmrg_example.jl
 """
 
-include("../src/custom/custom_dmrg.jl")
+# Use absolute path relative to this file's location
+example_dir = @__DIR__
+project_dir = dirname(example_dir)
+include(joinpath(project_dir, "src", "custom", "custom_dmrg.jl"))
 
 println("=" ^ 60)
 println("Single-Site DMRG Example: Heisenberg Model")
