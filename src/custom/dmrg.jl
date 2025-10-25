@@ -219,28 +219,34 @@ function construct_effective_hamiltonian(cache::EnvironmentCache, H::MPO, mps::M
     H_i = H.tensor[i]
     H_iplus1 = H.tensor[i+1]
 
-    # Contract H_i and H_i+1 first (this preserves the original logic)
-    # But use @tensor instead of @einsum for better performance
-    H_two = zeros(Complex{Float64}, size(H_i, 1), size(H_i, 2), size(H_iplus1, 2), size(H_i, 3), size(H_iplus1, 3), size(H_iplus1, 4))
-    @tensor H_two[a, b, c, d, e, f] = H_i[a, b, d, g] * H_iplus1[g, c, e, f]
+    # Contract H_i and H_i+1 first
+    # H_i[mpo_L, phys_i_in, phys_i_out, mpo_mid]
+    # H_iplus1[mpo_mid, phys_iplus1_in, phys_iplus1_out, mpo_R]
+    # Result: H_two[mpo_L, phys_i_in, phys_i_out, phys_iplus1_in, phys_iplus1_out, mpo_R]
+    H_two = zeros(Complex{Float64}, size(H_i, 1), size(H_i, 2), size(H_i, 3), size(H_iplus1, 2), size(H_iplus1, 3), size(H_iplus1, 4))
+    @tensor H_two[a, b, c, d, e, f] = H_i[a, b, c, g] * H_iplus1[g, d, e, f]
 
     # Contract with left environment
+    # L[mps_L_bra, mpo_L, mps_L_ket]
+    # Result: temp1[mps_L_bra, mps_L_ket, phys_i_in, phys_i_out, phys_iplus1_in, phys_iplus1_out, mpo_R]
     temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
     @tensor temp1[a, b, c, d, e, f, g] = L[a, h, b] * H_two[h, c, d, e, f, g]
 
     # Contract with right environment
+    # R[mps_R_bra, mpo_R, mps_R_ket]
+    # Result: temp2[mps_L_bra, mps_L_ket, phys_i_in, phys_i_out, phys_iplus1_in, phys_iplus1_out, mps_R_bra, mps_R_ket]
     temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
     @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
 
     # Reshape temp2 to construct the effective Hamiltonian H_eff
-    # temp2[mps_L_bra, mps_L_ket, phys_i_out, phys_{i+1}_out, phys_i_in, phys_{i+1}_in, mps_R_bra, mps_R_ket]
+    # temp2[mps_L_bra, mps_L_ket, phys_i_in, phys_i_out, phys_iplus1_in, phys_iplus1_out, mps_R_bra, mps_R_ket]
     # Need to reshape to H[bra_indices, ket_indices] where:
     # - bra_indices = [mps_L_bra, phys_i_out, phys_{i+1}_out, mps_R_bra]
     # - ket_indices = [mps_L_ket, phys_i_in, phys_{i+1}_in, mps_R_ket]
     chi_L = size(temp2, 1)  # mps_left bond (bra)
     chi_R = size(temp2, 7)  # mps_right bond (bra)
     # Permute to [mps_L_bra, phys_i_out, phys_{i+1}_out, mps_R_bra, mps_L_ket, phys_i_in, phys_{i+1}_in, mps_R_ket]
-    temp2_perm = permutedims(temp2, [1, 3, 4, 7, 2, 5, 6, 8])
+    temp2_perm = permutedims(temp2, [1, 4, 6, 7, 2, 3, 5, 8])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
@@ -256,28 +262,34 @@ function construct_effective_hamiltonian_left(cache::EnvironmentCache, H::MPO, m
     H_im1 = H.tensor[i - 1]
     H_i = H.tensor[i]
 
-    # Contract H_(i-1) and H_i (preserving original logic)
-    # Use @tensor instead of @einsum for better performance
-    H_two = zeros(Complex{Float64}, size(H_im1, 1), size(H_im1, 2), size(H_i, 2), size(H_im1, 3), size(H_i, 3), size(H_i, 4))
-    @tensor H_two[a, b, c, d, e, f] = H_im1[a, b, d, g] * H_i[g, c, e, f]
+    # Contract H_(i-1) and H_i
+    # H_im1[mpo_L, phys_im1_in, phys_im1_out, mpo_mid]
+    # H_i[mpo_mid, phys_i_in, phys_i_out, mpo_R]
+    # Result: H_two[mpo_L, phys_im1_in, phys_im1_out, phys_i_in, phys_i_out, mpo_R]
+    H_two = zeros(Complex{Float64}, size(H_im1, 1), size(H_im1, 2), size(H_im1, 3), size(H_i, 2), size(H_i, 3), size(H_i, 4))
+    @tensor H_two[a, b, c, d, e, f] = H_im1[a, b, c, g] * H_i[g, d, e, f]
     
     # Contract with left environment
+    # L[mps_L_bra, mpo_L, mps_L_ket]
+    # Result: temp1[mps_L_bra, mps_L_ket, phys_im1_in, phys_im1_out, phys_i_in, phys_i_out, mpo_R]
     temp1 = zeros(Complex{Float64}, size(L, 1), size(L, 3), size(H_two, 2), size(H_two, 3), size(H_two, 4), size(H_two, 5), size(H_two, 6))
     @tensor temp1[a, b, c, d, e, f, g] = L[a, h, b] * H_two[h, c, d, e, f, g]
 
     # Contract with right environment
+    # R[mps_R_bra, mpo_R, mps_R_ket]
+    # Result: temp2[mps_L_bra, mps_L_ket, phys_im1_in, phys_im1_out, phys_i_in, phys_i_out, mps_R_bra, mps_R_ket]
     temp2 = zeros(Complex{Float64}, size(temp1, 1), size(temp1, 2), size(temp1, 3), size(temp1, 4), size(temp1, 5), size(temp1, 6), size(R, 1), size(R, 3))
     @tensor temp2[a, b, c, d, e, f, g, h] = temp1[a, b, c, d, e, f, i] * R[g, i, h]
     
     # Reshape temp2 to construct the effective Hamiltonian H_eff
-    # temp2[mps_L_bra, mps_L_ket, phys_{i-1}_out, phys_i_out, phys_{i-1}_in, phys_i_in, mps_R_bra, mps_R_ket]
+    # temp2[mps_L_bra, mps_L_ket, phys_{i-1}_in, phys_{i-1}_out, phys_i_in, phys_i_out, mps_R_bra, mps_R_ket]
     # Need to reshape to H[bra_indices, ket_indices] where:
     # - bra_indices = [mps_L_bra, phys_{i-1}_out, phys_i_out, mps_R_bra]
     # - ket_indices = [mps_L_ket, phys_{i-1}_in, phys_i_in, mps_R_ket]
     chi_L = size(temp2, 1)  # mps_left bond (bra)
     chi_R = size(temp2, 7)  # mps_right bond (bra)
     # Permute to [mps_L_bra, phys_{i-1}_out, phys_i_out, mps_R_bra, mps_L_ket, phys_{i-1}_in, phys_i_in, mps_R_ket]
-    temp2_perm = permutedims(temp2, [1, 3, 4, 7, 2, 5, 6, 8])
+    temp2_perm = permutedims(temp2, [1, 4, 6, 7, 2, 3, 5, 8])
     H_eff = reshape(temp2_perm, (chi_L * d * d * chi_R, chi_L * d * d * chi_R))
 
     return H_eff
