@@ -570,6 +570,19 @@ function dmrg_sweep_single_site!(H::MPO, mps::MPS, cache::EnvironmentCache, dire
         
         # Reshape ground state back to a tensor
         mps.tensors[i] = reshape(ground_state, (chi_left, mps.d, chi_right))
+        
+        # Update environments after modifying the tensor
+        if direction == :right
+            # Right sweep: update left environment
+            if i < mps.N
+                update_left_environment!(cache, H, mps, i)
+            end
+        else
+            # Left sweep: update right environment
+            if i > 1
+                update_right_environment!(cache, H, mps, i)
+            end
+        end
     end
     
     return real(energy), mps
