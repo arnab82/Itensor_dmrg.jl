@@ -370,6 +370,13 @@ function dmrg_sweep!(H::MPO, mps::MPS, cache::EnvironmentCache, direction::Symbo
         if direction == :right
             mps.tensors[i] = reshape(U, (chi_i_left, mps.d, χ_trunc))
             mps.tensors[i+1] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_iplus1_right))
+            # Reinitialize entire cache after updating tensors to ensure consistency
+            initialize_cache!(cache, H, mps)
+        else
+            mps.tensors[i-1] = reshape(U, (chi_iminus1_left, mps.d, χ_trunc))
+            mps.tensors[i] = reshape(Diagonal(S_trunc) * Vt, (χ_trunc, mps.d, chi_i_right))
+            # Reinitialize entire cache after updating tensors to ensure consistency
+            initialize_cache!(cache, H, mps)
             # Update left environment after moving the orthogonality center
             # L[i] depends on mps.tensors[i] and L[i-1]
             # L[i+1] depends on mps.tensors[i+1] and L[i]
@@ -437,6 +444,10 @@ function dmrg(H::MPO, mps::MPS, max_sweeps::Int, χ_max::Int, tol::Float64, hubb
     cache = EnvironmentCache()
     
     for sweep in 1:max_sweeps
+        # Right sweep (cache is reinitialized within dmrg_sweep! after each tensor update)
+        energy_right, trunc_error_right, mps = dmrg_sweep!(H, mps, cache, :right, χ_max, tol, hubbard)
+        
+        # Left sweep (cache is reinitialized within dmrg_sweep! after each tensor update)
         # Rebuild environments at start of each full sweep (right + left)
         initialize_cache!(cache, H, mps)
         
