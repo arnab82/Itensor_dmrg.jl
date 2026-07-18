@@ -1,318 +1,111 @@
-# Itensor_dmrg.jl
+# NaiveDMRG.jl
 
-A Julia package for performing Density Matrix Renormalization Group (DMRG) calculations on quantum many-body systems using ITensors.jl.
+`NaiveDMRG.jl` is an independent, finite-system, two-site DMRG implementation
+for open-boundary matrix-product states, written from scratch in Julia. The
+name reflects its intent: a small, readable, "naive" DMRG you can follow
+end-to-end, rather than a production tensor-network framework.
 
-## Overview
+ITensor is retained only as a reference implementation for regression tests and
+numerical comparison; the solver itself never calls ITensor.
 
-This package provides implementations for:
-- DMRG algorithms for finding ground states of quantum systems
-- Heisenberg and Hubbard Hamiltonians
-- Custom tensor operations and utilities
-- Both ITensor-based and custom implementations
+The implementation currently supports:
 
-### Performance Features
-
-This package includes several optimizations for memory efficiency and speed:
-- **Smart ProjMPO reuse**: Reduces memory allocation by 50-70%
-- **Optimized environment caching**: Minimizes redundant computations
-- **Silent mode**: Reduces I/O overhead for production runs
-- **In-place operations**: Minimizes memory copying
-
-See [PERFORMANCE_GUIDE.md](PERFORMANCE_GUIDE.md) for detailed optimization tips and best practices.
+- dense complex MPS and MPO tensors;
+- left and right canonicalization;
+- matrix-free two-site effective Hamiltonians;
+- KrylovKit local eigensolves;
+- SVD bond truncation by maximum dimension and discarded weight;
+- an open spin-1/2 Heisenberg-chain MPO;
+- comparison with exact diagonalization and ITensor on small systems.
 
 ## Installation
 
-### Prerequisites
-- Julia 1.6 or higher
-- Git (for cloning the repository)
-
-### Install from GitHub
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/arnab82/Itensor_dmrg.jl.git
-   cd Itensor_dmrg.jl
-   ```
-
-2. **Activate and instantiate the project:**
-   ```julia
-   using Pkg
-   Pkg.activate(".")
-   Pkg.instantiate()
-   ```
-
-   This will download and install all required dependencies including:
-   - ITensors
-   - ITensorMPS
-   - KrylovKit
-   - TensorOperations
-   - And other dependencies listed in Project.toml
-
-### Alternative: Install as a Package
-
-You can also add this package directly in Julia:
-```julia
-using Pkg
-Pkg.add(url="https://github.com/arnab82/Itensor_dmrg.jl.git")
-```
-
-## Running Tests
-
-To verify the installation and run the test suite:
+From the repository root:
 
 ```julia
 using Pkg
 Pkg.activate(".")
-Pkg.test()
+Pkg.instantiate()
 ```
 
-Or from the command line:
+Run the complete test suite with:
+
 ```bash
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-## Usage
+## Quick start
 
-### Basic Example: Heisenberg Model
-
-```julia
-using ITensors
-using ITensorMPS
-using Itensor_dmrg
-
-# Define lattice parameters
-Nx, Ny = 4, 4  # 4x4 lattice
-N = Nx * Ny     # Total number of sites
-
-# Define model parameter
-J = 1.0  # Exchange coupling
-
-# Create the Heisenberg Hamiltonian
-H_heisenberg = Itensor_dmrg.heisenberg_hamiltonian(Nx, Ny, J)
-
-# Define site indices for spin-1/2 system
-s = siteinds("S=1/2", N)
-
-# Convert OpSum to MPO
-H = MPO(H_heisenberg, s)
-
-# Create initial MPS (alternating up/down spins)
-state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
-ψ = randomMPS(s, state)
-
-# Set up DMRG sweeps
-sweeps = Sweeps(10)
-setmaxdim!(sweeps, 10, 20, 50, 100, 100)
-setcutoff!(sweeps, 1E-10)
-
-# Run DMRG using ITensors built-in function
-energy, ψ = dmrg(H, ψ, sweeps)
-println("Ground state energy = ", energy)
-
-# Or use the custom simple DMRG implementation
-energy, ψ = Itensor_dmrg.simple_dmrg(H, ψ, 2; maxdim=50, cutoff=1E-8)
-println("Ground state energy = ", energy)
-
-# For production runs, use silent mode to reduce I/O overhead
-energy_opt, ψ_opt = Itensor_dmrg.simple_dmrg(H, ψ, 10; maxdim=100, cutoff=1E-8, silent=true)
-println("Optimized ground state energy = ", energy_opt)
-```
-
-### Hubbard Model Example
+The from-scratch solver is the package's primary API and is exported directly:
 
 ```julia
-using ITensors
-using ITensorMPS
-using Itensor_dmrg
+using NaiveDMRG
+using Random
 
-# Define lattice parameters
-Nx, Ny = 4, 4
-N = Nx * Ny
+rng = MersenneTwister(1234)
 
-# Model parameters
-t = 1.0  # Hopping parameter
-U = 4.0  # On-site interaction
+H = heisenberg_mpo(20; J=1.0)
+psi0 = random_MPS(20, 2, 16; rng=rng)
 
-# Create site indices with quantum number conservation
-sites = siteinds("Electron", N; conserve_qns=true)
+energy, psi = dmrg(
+    H,
+    psi0;
+    nsweeps=20,
+    maxdim=64,
+    cutoff=1e-10,
+    tol=1e-8,
+)
 
-# Create Hubbard Hamiltonian (MPO)
-H = Itensor_dmrg.hubbard_hamiltonian(sites, t, U, Nx, Ny)
-
-# Define initial state (half-filling with alternating spins)
-state = [isodd(n) ? "Up" : "Dn" for n in 1:N]
-ψ = productMPS(sites, state)
-
-# DMRG calculation
-sweeps = Sweeps(10)
-setmaxdim!(sweeps, 10, 20, 50, 100, 100)
-setcutoff!(sweeps, 1E-10)
-
-energy, ψ = dmrg(H, ψ, sweeps)
-println("Ground state energy = ", energy)
+println("energy = ", energy)
+println("bond dimensions = ", bond_dimensions(psi))
 ```
 
-### Custom DMRG Implementation
+`dmrg` runs on a copy and returns `(energy, psi)`; use `dmrg!` to optimize a
+state in place.
 
-The package also includes a custom DMRG implementation with MPO and MPS classes:
+## Tensor conventions
 
-```julia
-include("src/custom/custom_dmrg.jl")
+The solver uses a fixed index order:
 
-# Define system parameters
-N = 20    # Number of sites
-d = 4     # Physical dimension
-chi = 15  # Bond dimension
+- MPS tensor: `(left_bond, physical, right_bond)`
+- MPO tensor: `(left_bond, physical_out, physical_in, right_bond)`
 
-# Create Hubbard Hamiltonian
-Nx, Ny = 4, 4
-t = 1.0
-U = 4.0
-H = hubbard(Nx=Nx, Ny=Ny, t=t, U=U, yperiodic=false)
+The `MPS` and `MPO` constructors validate open boundaries, physical dimensions,
+and neighboring bond dimensions.
 
-# Initialize random MPS
-mps = random_mps(Nx * Ny, 4, chi)
+## Choosing parameters
 
-# Run two-site DMRG (can adjust bond dimensions)
-max_sweeps = 100
-χ_max = 15
-tol = 1e-6
-energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol, hubbard)
-println("Ground state energy: ", energy)
-```
+- `nsweeps`: maximum number of complete right-and-left sweeps.
+- `maxdim`: largest retained MPS bond dimension.
+- `cutoff`: maximum relative discarded singular-value weight at each split.
+- `tol`: convergence threshold for the change in the normalized energy between
+  complete sweeps.
+- `eig_tol`: tolerance for each local Krylov eigensolve.
+- `output`: print one convergence line per complete sweep.
 
-#### Single-Site DMRG
+Each of `maxdim`, `cutoff`, `tol`, and `eig_tol` also accepts a per-sweep
+schedule (tuple or vector); the last entry is reused for any further sweeps.
+Start with a modest `maxdim`, check convergence, and increase it until the
+energy and observables of interest stop changing at the required precision.
 
-The package also provides a single-site DMRG implementation as an alternative:
+## Documentation
 
-```julia
-include("src/custom/custom_dmrg.jl")
+- [Tutorial](docs/tutorial.md): a complete first calculation and validation
+  workflow.
+- [Implementation](docs/implementation.md): tensor definitions, environments,
+  sweeps, truncation, and convergence.
+- [Roadmap](docs/roadmap.md): current limitations and prioritized improvements.
 
-# Create Hamiltonian (e.g., Heisenberg model)
-N = 10
-d = 2
-chi_mpo = 5
-H = heisenberg_ham(N, d, chi_mpo)
+## Current scope
 
-# Initialize MPS with fixed bond dimension
-chi_mps = 20
-mps = random_MPS(N, d, chi_mps)
+The supported model constructor is the open spin-1/2 Heisenberg chain. The DMRG
+engine itself accepts any compatible `MPO`, but a stable public builder for
+general Hamiltonians is not implemented yet.
 
-# Run single-site DMRG (preserves bond dimensions)
-max_sweeps = 50
-tol = 1e-8
-energy, optimized_mps = dmrg_single_site(H, mps, max_sweeps, tol)
-println("Ground state energy: ", energy)
-```
+The ITensor reference code lives in the `NaiveDMRG.Reference` submodule
+(`NaiveDMRG.Reference.heisenberg_hamiltonian`, `.simple_dmrg`, and so on). It is
+used only by the comparison tests and examples and is never invoked by the
+exported `NaiveDMRG` API.
 
-**Key differences between two-site and single-site DMRG:**
-
-- **Two-site DMRG (`dmrg`)**: 
-  - Optimizes two adjacent sites at a time
-  - Can dynamically adjust bond dimensions through SVD truncation
-  - Slower per sweep but more flexible
-  - Good for initial optimization with growing bond dimensions
-  
-- **Single-site DMRG (`dmrg_single_site`)**: 
-  - Optimizes one site at a time
-  - Preserves bond dimensions (cannot change them)
-  - Faster per sweep
-  - Good for refinement after initial two-site optimization
-  - Useful when bond dimensions are already optimal
-
-**Typical workflow:**
-1. Use two-site DMRG to find the optimal bond dimensions
-2. Use single-site DMRG for final refinement/convergence
-
-## Package Structure
-
-```
-Itensor_dmrg.jl/
-├── src/
-│   ├── Itensor/              # ITensor-based implementations
-│   │   ├── Itensor_dmrg.jl  # Main module file
-│   │   ├── heisenberg_hamiltonian.jl
-│   │   ├── hubbard_hamiltonian.jl
-│   │   ├── dmrg_ITensor.jl  # DMRG implementation
-│   │   └── utils.jl         # Utility functions
-│   └── custom/               # Custom tensor implementations
-│       ├── custom_dmrg.jl   # Main custom module
-│       ├── MPS.jl           # Matrix Product State
-│       ├── MPO.jl           # Matrix Product Operator
-│       ├── dmrg.jl          # Custom DMRG algorithm
-│       ├── heisenberg_ham.jl
-│       └── hubbard_ham.jl
-├── example/                  # Example scripts
-│   ├── heisenberg.jl
-│   ├── hubbard.jl
-│   └── test.jl
-├── test/
-│   └── runtests.jl          # Test suite
-├── Project.toml             # Package dependencies
-└── README.md                # This file
-```
-
-## Key Functions
-
-### Hamiltonians
-- `heisenberg_hamiltonian(Nx, Ny, J)`: Create Heisenberg model Hamiltonian
-- `hubbard_hamiltonian(sites, t, U)`: Create Hubbard model Hamiltonian
-
-### DMRG Functions
-- `simple_dmrg(H, ψ, nsweeps; maxdim, cutoff)`: Perform DMRG optimization
-- `compute_energy(ψ, H)`: Calculate energy expectation value
-
-### Utilities
-- `svd_truncate(ψ, b, phi; maxdim, cutoff, normalize, ortho)`: SVD with truncation
-
-## Examples
-
-See the `example/` directory for complete working examples:
-- `heisenberg.jl`: Heisenberg model on a 4x4 lattice
-- `hubbard.jl`: Hubbard model calculation
-- `test.jl`: Custom implementation example
-
-## Environment Caching
-
-The package includes an optimized environment caching system for DMRG calculations. See `ENVIRONMENT_CACHING.md` for detailed documentation on:
-- How environment caching works
-- Performance benefits
-- Handling aggressive bond dimension truncation
-
-## Performance Optimization
-
-For tips on achieving optimal performance and memory efficiency, see [PERFORMANCE_GUIDE.md](PERFORMANCE_GUIDE.md), which covers:
-- Memory optimization strategies
-- Best practices for different system sizes
-- Benchmarking tools
-- Common performance issues and solutions
-
-To run the included benchmark:
-```bash
-julia --project=. benchmark.jl
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## License
-
-See LICENSE file for details.
-
-## Citation
-
-If you use this package in your research, please cite:
-```
-@software{itensor_dmrg_jl,
-  author = {Arnab},
-  title = {Itensor_dmrg.jl: DMRG calculations with ITensors},
-  url = {https://github.com/arnab82/Itensor_dmrg.jl},
-  year = {2024}
-}
-```
-
-## References
-
-- ITensors.jl: https://github.com/ITensor/ITensors.jl
-- DMRG Algorithm: White, S.R. (1992). "Density matrix formulation for quantum renormalization groups"
+Full dense conversion through `dense` grows exponentially and is intended only
+for small-system validation.
