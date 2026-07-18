@@ -69,12 +69,12 @@ include("../src/custom/custom_dmrg.jl")
             # Check MPO structure
             @test H isa MPO
             @test H.N == N
-            # Note: MPO.d1 and d2 are inferred from first tensor shape
-            @test H.d1 == 1  # First dimension of first tensor
-            @test H.d2 == d  # Physical dimension
+            # MPO.d1 and d2 are the physical dimensions (input and output)
+            @test H.d1 == d  # Physical dimension (input)
+            @test H.d2 == d  # Physical dimension (output)
             @test length(H.tensor) == N
             
-            # Check tensor shapes
+            # Check tensor shapes (bond_left, phys_in, phys_out, bond_right)
             @test size(H.tensor[1]) == (1, d, d, 5)  # First site
             @test size(H.tensor[N]) == (5, d, d, 1)  # Last site
             for i in 2:N-1
@@ -147,12 +147,12 @@ include("../src/custom/custom_dmrg.jl")
             # Check MPO structure
             @test H isa MPO
             @test H.N == N
-            # Note: MPO.d1 and d2 are inferred from first tensor shape
-            @test H.d1 == 1  # First dimension of first tensor
-            @test H.d2 == d  # Physical dimension
+            # MPO.d1 and d2 are the physical dimensions (input and output)
+            @test H.d1 == d  # Physical dimension (input)
+            @test H.d2 == d  # Physical dimension (output)
             @test length(H.tensor) == N
             
-            # Check tensor shapes
+            # Check tensor shapes (bond_left, phys_in, phys_out, bond_right)
             @test size(H.tensor[1]) == (1, d, d, 5)  # First site
             @test size(H.tensor[N]) == (5, d, d, 1)  # Last site
         end

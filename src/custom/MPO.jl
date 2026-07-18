@@ -83,8 +83,10 @@ mutable struct MPO
 
     function MPO(tensor::Vector{Array{Complex{Float64},4}})
         N = length(tensor)
-        d1 = N == 0 ? 0 : size(tensor[1], 1)
-        d2 = N == 0 ? 0 : size(tensor[1], 2)
+        # d1 and d2 are the physical dimensions (indices 2 and 3 in the tensor)
+        # not the bond dimensions (indices 1 and 4)
+        d1 = N == 0 ? 0 : size(tensor[1], 2)
+        d2 = N == 0 ? 0 : size(tensor[1], 3)
         new(tensor, N, d1, d2, -1)
     end
 end
@@ -195,16 +197,25 @@ Convert the MPO to a matrix.
 
 
 function MPO_to_array(mpo::MPO)
-    r, c = mpo.d1^mpo.N, mpo.d2^mpo.N
+    # Physical dimensions
+    d1 = mpo.d1
+    d2 = mpo.d2
+    r, c = d1^mpo.N, d2^mpo.N
     O = zeros(Complex{Float64}, (r, c))
     for i in 0:r-1
-        ii = digits(i, base=mpo.d1, pad=mpo.N)
+        ii = digits(i, base=d1, pad=mpo.N)
         for j in 0:c-1
-            jj = digits(j, base=mpo.d2, pad=mpo.N)
+            jj = digits(j, base=d2, pad=mpo.N)
+            # Contract MPO tensors along bond dimensions
+            # Start with left boundary (1x1 identity)
             co = ones(Complex{Float64}, 1, 1)
             for n in 1:mpo.N
-                co = co * mpo.tensor[n][ii[n]+1,jj[n]+1,:,:]
+                # Extract the relevant matrix slice [bond_left, bond_right] for physical indices ii[n]+1, jj[n]+1
+                mat_slice = mpo.tensor[n][:, ii[n]+1, jj[n]+1, :]
+                # Contract: co[bond_in] * mat_slice[bond_in, bond_out] -> co[bond_out]
+                co = co * mat_slice
             end
+            # After contracting all sites, co should be 1x1
             O[i+1,j+1] = co[1,1]
         end
     end

@@ -173,13 +173,56 @@ H = hubbard(Nx=Nx, Ny=Ny, t=t, U=U, yperiodic=false)
 # Initialize random MPS
 mps = random_mps(Nx * Ny, 4, chi)
 
-# Run DMRG
+# Run two-site DMRG (can adjust bond dimensions)
 max_sweeps = 100
 χ_max = 15
 tol = 1e-6
 energy, ground_state_mps = dmrg(H, mps, max_sweeps, χ_max, tol, hubbard)
 println("Ground state energy: ", energy)
 ```
+
+#### Single-Site DMRG
+
+The package also provides a single-site DMRG implementation as an alternative:
+
+```julia
+include("src/custom/custom_dmrg.jl")
+
+# Create Hamiltonian (e.g., Heisenberg model)
+N = 10
+d = 2
+chi_mpo = 5
+H = heisenberg_ham(N, d, chi_mpo)
+
+# Initialize MPS with fixed bond dimension
+chi_mps = 20
+mps = random_MPS(N, d, chi_mps)
+
+# Run single-site DMRG (preserves bond dimensions)
+max_sweeps = 50
+tol = 1e-8
+energy, optimized_mps = dmrg_single_site(H, mps, max_sweeps, tol)
+println("Ground state energy: ", energy)
+```
+
+**Key differences between two-site and single-site DMRG:**
+
+- **Two-site DMRG (`dmrg`)**: 
+  - Optimizes two adjacent sites at a time
+  - Can dynamically adjust bond dimensions through SVD truncation
+  - Slower per sweep but more flexible
+  - Good for initial optimization with growing bond dimensions
+  
+- **Single-site DMRG (`dmrg_single_site`)**: 
+  - Optimizes one site at a time
+  - Preserves bond dimensions (cannot change them)
+  - Faster per sweep
+  - Good for refinement after initial two-site optimization
+  - Useful when bond dimensions are already optimal
+
+**Typical workflow:**
+1. Use two-site DMRG to find the optimal bond dimensions
+2. Use single-site DMRG for final refinement/convergence
 
 ## Package Structure
 

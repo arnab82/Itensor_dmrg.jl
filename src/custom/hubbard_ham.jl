@@ -4,45 +4,51 @@ using LinearAlgebra
 
 
 # Define 4x4 operators directly, ensuring each is structured for a four-level system
+# Basis states: |0⟩ = empty, |↑⟩ = up, |↓⟩ = down, |↑↓⟩ = doubly occupied
+# Matrix element M[i,j] represents ⟨i|Op|j⟩ where i is row (bra) and j is column (ket)
 function create_site_operator(op_type::String, d::Int)
     if op_type == "Cdagup"
-        # Create Cdagup as a 4x4 matrix
-        return [0 0 0 0; 
-                0 0 0 0; 
-                0 1 0 0; 
-                0 0 0 0]
+        # Create Cdagup - adds an up electron
+        # |0⟩ → |↑⟩, |↓⟩ → |↑↓⟩
+        return [0 0 0 0;   # ⟨0| 
+                1 0 0 0;   # ⟨↑|: from |0⟩
+                0 0 0 0;   # ⟨↓|
+                0 0 1 0]   # ⟨↑↓|: from |↓⟩
     elseif op_type == "Cup"
-        # Create Cup as a 4x4 matrix
-        return [0 0 0 0; 
-                0 0 1 0; 
-                0 0 0 0; 
-                0 0 0 0]
+        # Create Cup - removes an up electron (adjoint of Cdagup)
+        # |↑⟩ → |0⟩, |↑↓⟩ → |↓⟩
+        return [0 1 0 0;   # ⟨0|: from |↑⟩
+                0 0 0 0;   # ⟨↑|
+                0 0 0 1;   # ⟨↓|: from |↑↓⟩
+                0 0 0 0]   # ⟨↑↓|
     elseif op_type == "Cdagdn"
-        # Create Cdagdn as a 4x4 matrix
-        return [0 0 0 0; 
-                0 0 0 0; 
-                0 0 0 0; 
-                0 1 0 0]
+        # Create Cdagdn - adds a down electron
+        # |0⟩ → |↓⟩, |↑⟩ → |↑↓⟩
+        return [0 0 0 0;   # ⟨0|
+                0 0 0 0;   # ⟨↑|
+                1 0 0 0;   # ⟨↓|: from |0⟩
+                0 1 0 0]   # ⟨↑↓|: from |↑⟩
     elseif op_type == "Cdn"
-        # Create Cdn as a 4x4 matrix
-        return [0 0 0 0; 
-                0 0 0 0; 
-                0 0 0 0; 
-                0 0 1 0]
+        # Create Cdn - removes a down electron (adjoint of Cdagdn)
+        # |↓⟩ → |0⟩, |↑↓⟩ → |↑⟩
+        return [0 0 1 0;   # ⟨0|: from |↓⟩
+                0 0 0 1;   # ⟨↑|: from |↑↓⟩
+                0 0 0 0;   # ⟨↓|
+                0 0 0 0]   # ⟨↑↓|
     elseif op_type == "Nup"
-        # Create Nup as a 4x4 matrix
+        # Number operator for up electrons
         return [0 0 0 0; 
                 0 1 0 0; 
-                0 0 1 0; 
-                0 0 0 0]
+                0 0 0 0; 
+                0 0 0 1]
     elseif op_type == "Ndn"
-        # Create Ndn as a 4x4 matrix
+        # Number operator for down electrons
         return [0 0 0 0; 
                 0 0 0 0; 
                 0 0 1 0; 
                 0 0 0 1]
     elseif op_type == "Nupdn"
-        # Create Nupdn as a 4x4 matrix
+        # Double occupancy operator
         return [0 0 0 0; 
                 0 0 0 0; 
                 0 0 0 0; 

@@ -14,10 +14,20 @@ struct MPS
     end
 end
 
-# Initialize a random MPS
+# Initialize a random MPS (normalized)
 function random_MPS(N::Int, d::Int, χ::Int)
     tensors = [randn(ComplexF64, (i == 1 ? 1 : χ, d, i == N ? 1 : χ)) for i in 1:N]
-    return MPS(tensors)
+    mps = MPS(tensors)
+    
+    # Normalize the MPS: put in left-canonical form, then normalize the last tensor
+    left_normalize!(mps)
+    
+    # Compute norm by contracting the rightmost tensor with itself
+    last_tensor = mps.tensors[N]
+    norm_sq = sum(abs2, last_tensor)
+    mps.tensors[N] ./= sqrt(norm_sq)
+    
+    return mps
 end
 
 # Left-normalize the MPS (in-place)
