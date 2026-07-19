@@ -1,4 +1,4 @@
-name = "Itensor_dmrg"
+name = "NaiveDMRG"
 uuid = "1a2b3c4d-5e6f-7890-abcd-ef1234567890"
 version = "0.1.0"
 
@@ -12,6 +12,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 

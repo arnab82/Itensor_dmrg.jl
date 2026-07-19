@@ -1,8 +1,11 @@
 #!/usr/bin/env julia
-# Validation script for 4x4 Heisenberg model with memory-safe parameters
+# Validation script for 4x4 Heisenberg model with memory-safe parameters.
+# Uses the ITensor reference Hamiltonian in NaiveDMRG.Reference and ITensor's
+# own DMRG. `import NaiveDMRG` keeps NaiveDMRG.MPS/MPO from clashing with
+# ITensor's MPS/MPO types used below.
 
 using ITensors, ITensorMPS
-using Itensor_dmrg
+import NaiveDMRG
 
 println("="^60)
 println("Validating 4x4 Heisenberg Model with Safe Parameters")
@@ -19,7 +22,7 @@ println("Coupling constant J = $J")
 
 # Create the Heisenberg Hamiltonian
 println("\nCreating Heisenberg Hamiltonian...")
-H_heisenberg = Itensor_dmrg.heisenberg_hamiltonian(Nx, Ny, J)
+H_heisenberg = NaiveDMRG.Reference.heisenberg_hamiltonian(Nx, Ny, J)
 
 # Define site indices for the lattice
 s = siteinds("S=1/2", N)

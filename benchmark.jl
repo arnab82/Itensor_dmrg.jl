@@ -1,19 +1,23 @@
 #!/usr/bin/env julia
 
 """
-Simple benchmark script to demonstrate performance improvements
-in Itensor_dmrg.jl
+Simple benchmark script for the ITensor reference DMRG shipped in
+NaiveDMRG.Reference (NaiveDMRG.Reference.simple_dmrg).
 
 This script compares memory usage and execution time with different settings.
+`import NaiveDMRG` (rather than `using`) keeps NaiveDMRG.MPS/MPO from clashing
+with ITensor's own MPS/MPO types used below.
 """
 
 using ITensors
 using ITensorMPS
-using Itensor_dmrg
+import NaiveDMRG
 using Printf
 
+const Ref = NaiveDMRG.Reference
+
 println("="^60)
-println("Itensor_dmrg.jl Performance Benchmark")
+println("NaiveDMRG.Reference Performance Benchmark")
 println("="^60)
 
 # Test system: Small Heisenberg model
@@ -26,7 +30,7 @@ println("  Lattice: $(Nx)x$(Ny) = $N sites")
 println("  Coupling: J = $J")
 
 # Create Hamiltonian
-H_opsum = Itensor_dmrg.heisenberg_hamiltonian(Nx, Ny, J)
+H_opsum = Ref.heisenberg_hamiltonian(Nx, Ny, J)
 s = siteinds("S=1/2", N)
 H = MPO(H_opsum, s)
 
@@ -42,7 +46,7 @@ println("="^60)
 println("\nRunning with verbose output (silent=false)...")
 ψ1 = copy(ψ0)
 time_verbose = @elapsed begin
-    energy1, ψ1 = Itensor_dmrg.simple_dmrg(H, ψ1, 2; maxdim=50, cutoff=1E-8, silent=false)
+    energy1, ψ1 = Ref.simple_dmrg(H, ψ1, 2; maxdim=50, cutoff=1E-8, silent=false)
 end
 @printf("  Time: %.3f seconds\n", time_verbose)
 @printf("  Energy: %.12f\n", energy1)
@@ -50,7 +54,7 @@ end
 println("\nRunning with silent mode (silent=true)...")
 ψ2 = copy(ψ0)
 time_silent = @elapsed begin
-    energy2, ψ2 = Itensor_dmrg.simple_dmrg(H, ψ2, 2; maxdim=50, cutoff=1E-8, silent=true)
+    energy2, ψ2 = Ref.simple_dmrg(H, ψ2, 2; maxdim=50, cutoff=1E-8, silent=true)
 end
 @printf("  Time: %.3f seconds\n", time_silent)
 @printf("  Energy: %.12f\n", energy2)
@@ -70,7 +74,7 @@ for maxdim in [20, 50, 100]
     # Measure memory
     mem_before = Base.gc_live_bytes() / 1e6  # Convert to MB
     
-    energy, ψ_test = Itensor_dmrg.simple_dmrg(H, ψ_test, 2; maxdim=maxdim, cutoff=1E-8, silent=true)
+    energy, ψ_test = Ref.simple_dmrg(H, ψ_test, 2; maxdim=maxdim, cutoff=1E-8, silent=true)
     
     # Force garbage collection after to get accurate reading
     GC.gc()
@@ -95,7 +99,7 @@ times = Float64[]
 
 for sweep in 1:5
     time_sweep = @elapsed begin
-        energy, ψ_conv = Itensor_dmrg.simple_dmrg(H, ψ_conv, 1; maxdim=maxdim, cutoff=cutoff, silent=true)
+        energy, ψ_conv = Ref.simple_dmrg(H, ψ_conv, 1; maxdim=maxdim, cutoff=cutoff, silent=true)
     end
     push!(energies, energy)
     push!(times, time_sweep)
@@ -113,5 +117,5 @@ println("  ✓ Silent mode reduces I/O overhead")
 println("  ✓ Efficient memory usage with ProjMPO reuse")
 println("  ✓ Fast convergence with optimized tensor operations")
 println("  ✓ Memory scales predictably with bond dimension")
-println("\nSee PERFORMANCE_GUIDE.md for more optimization tips!")
+println("\nSee docs/roadmap.md for planned performance work.")
 println("="^60)
