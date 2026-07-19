@@ -13,6 +13,7 @@ The implementation currently supports:
 - dense complex MPS and MPO tensors;
 - left and right canonicalization;
 - matrix-free two-site effective Hamiltonians;
+- single-site DMRG with subspace expansion (`single_site_dmrg`);
 - KrylovKit local eigensolves;
 - SVD bond truncation by maximum dimension and discarded weight;
 - an open spin-1/2 Heisenberg-chain MPO, plus a generic nearest-neighbor MPO

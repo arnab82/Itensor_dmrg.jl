@@ -20,6 +20,8 @@ Several items originally listed below have since landed:
 - **Local observables and correlations** — `expect`, `correlation`,
   `correlation_matrix`, `spin_half_operators`.
 - **Entanglement diagnostics** — `schmidt_values`, `entanglement_entropy`.
+- **Single-site DMRG with subspace expansion** — `single_site_dmrg`,
+  `single_site_dmrg!`.
 
 Completed subsections below are marked **(Done.)**. The math for the from-scratch
 solver, its observables, entanglement, and the MPO builder is derived in
@@ -159,7 +161,7 @@ Performance comparisons should verify equal energies and tolerances first.
 After the core API and tests stabilize:
 
 - quantum-number-conserving block-sparse tensors;
-- single-site DMRG with subspace expansion;
+- single-site DMRG with subspace expansion **(Done — `single_site_dmrg`)**;
 - excited states through orthogonality penalties or projected solvers;
 - finite-state/MPO builders for long-range interactions;
 - periodic-boundary support, with explicit cost expectations;
@@ -170,16 +172,16 @@ After the core API and tests stabilize:
 ## Recommended next milestone
 
 With structured results, sweep schedules, incremental environments, the generic
-MPO builder, observables, and entanglement diagnostics all in place, the next
-focused steps are:
+MPO builder, observables, entanglement diagnostics, and single-site DMRG all in
+place, the next focused steps are:
 
 1. **Parametric scalar/storage types** — generalize `MPS`, `MPO`, and the
    environments off hard-coded `ComplexF64` so real Hamiltonians run in `Float64`
    (Priority 2). This is the widest-reaching remaining refactor.
-2. **Single-site DMRG with subspace expansion** — an alternative sweep engine
-   alongside the two-site solver (Priority 3).
-3. **Remaining construction tools** — a product-state builder and a validated,
+2. **Remaining construction tools** — a product-state builder and a validated,
    sign-correct Hubbard MPO on the native tensor conventions.
+3. **Excited states** — via orthogonality penalties or projected solvers
+   (Priority 3).
 
 Deferred for now: explicit local-eigensolver failure handling, and moving
 `NaiveDMRG.Reference` behind a package extension.

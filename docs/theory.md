@@ -654,6 +654,60 @@ $\min(t, \text{length})$ on sweep $t$, so the final entry is reused for any
 further sweeps. Gradually raising `maxdim` — a small bond early, larger later —
 is often more robust and cheaper than starting at the final maximum.
 
+### 7.5 Single-site DMRG with subspace expansion
+
+The two-site update grows bonds for free through the SVD of the merged $\Theta$
+(§6). A cheaper alternative optimizes **one** site tensor at a time. Its effective
+Hamiltonian keeps a single MPO tensor,
+
+```math
+(H^{1}_{\mathrm{eff}} A)[l, s', r]
+\;=\; \sum_{l_k,\,a,\,b,\,r_k,\,s}
+      L^{(i-1)}[l, a, l_k]\, W^{(i)}[a, s', s, b]\, R^{(i+1)}[r, b, r_k]\, A[l_k, s, r_k],
+```
+
+solved for its lowest eigenpair exactly as in §5.5 (`effective_action_1site`,
+`lowest_local_state_1site` in `src/core/single_site_dmrg.jl`). The center is then
+moved by a QR/SVD of the single tensor.
+
+**The problem.** A single-site update cannot, by itself, change a bond dimension:
+the SVD of one site tensor produces at most its current rank. Started from a
+too-small bond it is trapped there and converges to the wrong state.
+
+**Subspace expansion (a "DMRG3S"-style fix).** Before moving the center rightward
+from site $i$, enlarge the active bond with an $H$-informed perturbation built
+from the environment and MPO,
+
+```math
+P[l, s', (b, r)] \;=\; \sum_{l_k,\,a,\,s}
+      L^{(i-1)}[l, a, l_k]\, W^{(i)}[a, s', s, b]\, A^{(i)}[l_k, s, r] ,
+```
+
+which shares the left index $l$ and physical index $s'$ of the optimized tensor
+$M = A^{(i)}$ but carries a new right index $(b, r)$ of size $w\cdot r$. Append it
+to $M$ and pad the *next* site with a matching block of zeros:
+
+```math
+M_{\mathrm{enl}} = \bigl[\,M \;\big|\; \alpha P\,\bigr], \qquad
+B_{\mathrm{enl}} = \begin{bmatrix} B \\ 0 \end{bmatrix}.
+```
+
+Because the appended columns of $M_{\mathrm{enl}}$ multiply the zero rows of
+$B_{\mathrm{enl}}$, the product — and hence $|\psi\rangle$ — is **unchanged**:
+$M_{\mathrm{enl}} B_{\mathrm{enl}} = M B$. Now SVD $M_{\mathrm{enl}}$ and truncate
+to `maxdim` (§6.2): the perturbation has opened $H$-informed directions the plain
+bond could not represent, so the retained left-canonical basis can *grow* toward
+`maxdim`, and later sweeps populate the new directions. The left move is the
+mirror image, enlarging the left bond from $R^{(i+1)}$, $W^{(i)}$, and $M$.
+
+The mixing factor $\alpha$ controls how strongly the perturbation enters. It must
+be small (so the truncation does not discard real directions in favor of noise)
+and is **decayed to zero** over the sweeps; once $\alpha = 0$ the method is exact
+single-site DMRG and the run is allowed to declare convergence. `single_site_dmrg`
+takes an `alpha` schedule for exactly this. Starting from a bond-2 state, it grows
+the four-site Heisenberg chain to the exact bonds $[2,4,2]$ and recovers the
+ground-state energy to machine precision (see the tests).
+
 ---
 
 ## 8. Local observables and correlation functions
@@ -800,6 +854,9 @@ The derivation above is pinned down, piece by piece, by the test suite:
   $E_0 = -1.6160254037844386$ from exact diagonalization (§1.2, §2.1); agreement
   of the sweep result (§7); the variational bound and its improvement as `maxdim`
   increases (§5.5, §7.4); and agreement with the ITensor reference DMRG.
+- **`test/single_site_dmrg_test.jl`** — single-site DMRG with subspace expansion
+  (§7.5) growing a bond-restricted state to the exact bonds and energy, agreeing
+  with two-site DMRG, and solving the TFIM ground state.
 - **`test/mpo_builder_test.jl`** — the builder of §2.4 reproducing `heisenberg_mpo`
   to machine precision, and `tfim_mpo` against a dense Kronecker Hamiltonian and
   exact-diagonalization ground state.
