@@ -43,6 +43,18 @@ H = heisenberg_mpo(N; J=1.0, hz=0.0)
 
 The local physical dimension is two and the MPO bond dimension is five.
 
+To go beyond the Heisenberg chain, `nearest_neighbor_mpo` compiles any
+translation-invariant on-site + nearest-neighbor Hamiltonian (see
+[theory §2.4](theory.md)). For example the transverse-field Ising model is the
+one-liner `tfim_mpo(N; J=1.0, h=1.0)`, equivalent to
+
+```julia
+ops = spin_half_operators()
+H = nearest_neighbor_mpo(N, 2;
+        onsite = [(-1.0, ops.Sx)],
+        bond   = [(-1.0, ops.Sz, ops.Sz)])
+```
+
 ## 3. Build a reproducible initial MPS
 
 ```julia
@@ -230,6 +242,26 @@ Czz = correlation_matrix(psi, ops.Sz, ops.Sz)
 Because operators are plain matrices, non-Hermitian correlators work too — for
 example `correlation(psi, ops.Sp, ops.Sm, i, j)` returns the (generally complex)
 $\langle S^+_i S^-_j\rangle$.
+
+## 10. Entanglement
+
+The bipartite entanglement across each bond — the quantity a small `maxdim` is
+allowed to discard — is available directly (see [theory §8.4](theory.md)):
+
+```julia
+# Schmidt values (σₖ, with Σσₖ² = 1) across the middle bond.
+σ = schmidt_values(psi, N ÷ 2)
+println("Schmidt spectrum = ", round.(σ; digits=4))
+
+# Von Neumann entropy S(b) = -Σ σₖ² log σₖ² across every bond (nats).
+S = entanglement_entropy(psi)
+println("entanglement profile = ", round.(S; digits=4))
+println("bits at the center   = ", entanglement_entropy(psi, N ÷ 2; base=2))
+```
+
+A product state has `S = 0` everywhere; an open critical chain shows the
+familiar entropy peak in the middle. If the central entropy is close to
+`log(maxdim)`, the bond dimension is saturating and should be increased.
 
 ## Practical convergence checklist
 

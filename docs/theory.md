@@ -171,6 +171,43 @@ $5\!\to\!k\!\to\!1$ that lays down a bond term. Summing the two-step paths,
 
 using $S^x S^x + S^y S^y = \tfrac12(S^+S^- + S^-S^+)$. This reproduces $H$ exactly.
 
+### 2.4 General nearest-neighbor MPOs from local terms
+
+The finite-state machine of §2.3 is not special to the Heisenberg chain — it is a
+recipe for *any* translation-invariant Hamiltonian built from on-site and
+nearest-neighbor terms,
+
+```math
+H \;=\; \sum_{i}\ \sum_{(c,\hat O)\,\in\,\text{onsite}} c\,\hat O_i
+    \;+\; \sum_{i}\ \sum_{(c,\hat L,\hat R)\,\in\,\text{bond}} c\,\hat L_i \hat R_{i+1}.
+```
+
+Label the automaton states so that state $w$ means "no term started", state $1$
+means "term completed", and states $2,\dots,K+1$ are one intermediate channel per
+bond term, where $K = |\text{bond}|$. The MPO bond dimension is then $w = K + 2$,
+and the bulk tensor has the operator-valued entries
+
+```math
+\begin{aligned}
+W_{w,w} &= \mathbb{1}, & W_{1,1} &= \mathbb{1}, &
+W_{w,1} &= \sum_{(c,\hat O)} c\,\hat O, \\
+W_{w,\,1+k} &= c_k\,\hat L_k, & W_{1+k,\,1} &= \hat R_k, & &
+\end{aligned}
+```
+
+for the $k$-th bond term $(c_k, \hat L_k, \hat R_k)$. The left boundary selects
+the start row $w$ and the right boundary the completed column $1$, exactly as in
+§2.3. A path $w \to 1$ deposits an on-site term; a path $w \to 1+k \to 1$
+deposits $c_k\,\hat L_k \hat R_{k+1}$ on one bond; and $W_{w,w}$/$W_{1,1}$ carry
+the identity before and after.
+
+`nearest_neighbor_mpo(N, d; onsite, bond)` (`src/core/mpo_builder.jl`) implements
+this directly, and `tfim_mpo` is the transverse-field Ising special case
+$\text{onsite} = \{(-h, S^x)\}$, $\text{bond} = \{(-J, S^z, S^z)\}$. The tests
+confirm that feeding the Heisenberg terms
+$\{(\tfrac{J}{2}, S^+, S^-), (\tfrac{J}{2}, S^-, S^+), (J, S^z, S^z)\}$ into the
+builder reproduces `heisenberg_mpo` to machine precision.
+
 ---
 
 ## 3. Canonical forms
@@ -693,6 +730,42 @@ $\sum_{ij}\langle S^z_i S^z_j\rangle = \langle(\textstyle\sum_i S^z_i)^2\rangle 
 because the state lies in the total-$S^z = 0$ sector. Both are checked in the
 tests.
 
+### 8.4 Entanglement entropy and the Schmidt spectrum
+
+The Schmidt decomposition of $|\psi\rangle$ across the cut between sites $b$ and
+$b+1$ writes it as
+
+```math
+|\psi\rangle \;=\; \sum_{k} \sigma_k\, |L_k\rangle\,|R_k\rangle,
+\qquad \sum_k \sigma_k^2 = 1,
+```
+
+with $\{|L_k\rangle\}$ and $\{|R_k\rangle\}$ orthonormal states of the two halves.
+As §3.4(4) noted, the $\sigma_k^2$ are the eigenvalues of the reduced density
+matrix $\rho_{\le b} = \operatorname{tr}_{>b}|\psi\rangle\langle\psi|$ — the
+*entanglement spectrum* — and the von Neumann entanglement entropy is
+
+```math
+S(b) \;=\; -\sum_k \sigma_k^2 \log \sigma_k^2 .
+```
+
+Canonical form turns this into a single SVD. Put the orthogonality center at site
+$b$ — sites $1..b{-}1$ left-canonical, $b{+}1..N$ right-canonical — so that
+$|\psi\rangle = \sum_{l,s,r} C[l,s,r]\,|\Lambda_l\rangle|s\rangle|P_r\rangle$ with
+both block families orthonormal (§5.2). The combined index $(l,s)$ labels the
+left half $\{1..b\}$ and $r$ the right half $\{b{+}1..N\}$, both orthonormally, so
+the singular values of the reshaped center $C_{(l s),\,r}$ *are* the Schmidt
+values $\sigma_k$.
+
+`schmidt_values(psi, bond)` (`src/core/entanglement.jl`) does exactly this on a
+copy: it normalizes, right-canonicalizes, walks the center to site `bond` with
+QR factorizations, and returns $\operatorname{svdvals}$ of the reshaped center.
+`entanglement_entropy(psi, bond; base)` forms $S(b)$ from those values (`base=2`
+for bits), and `entanglement_entropy(psi)` returns the profile over all bonds. A
+product state gives $\sigma = (1)$ and $S = 0$; a singlet gives
+$\sigma = (\tfrac{1}{\sqrt2}, \tfrac{1}{\sqrt2})$ and $S = \log 2$ — both checked
+against a dense SVD in the tests.
+
 ---
 
 ## 9. Cost and memory
@@ -727,10 +800,16 @@ The derivation above is pinned down, piece by piece, by the test suite:
   $E_0 = -1.6160254037844386$ from exact diagonalization (§1.2, §2.1); agreement
   of the sweep result (§7); the variational bound and its improvement as `maxdim`
   increases (§5.5, §7.4); and agreement with the ITensor reference DMRG.
+- **`test/mpo_builder_test.jl`** — the builder of §2.4 reproducing `heisenberg_mpo`
+  to machine precision, and `tfim_mpo` against a dense Kronecker Hamiltonian and
+  exact-diagonalization ground state.
 - **`test/observables_test.jl`** — `expect` and `correlation` (§8) against dense
   reference operators built by Kronecker products, exact values on a product
   state, and the singlet identities $\langle(S^z_i)^2\rangle = \tfrac14$ and
   $\sum_{ij}\langle S^z_i S^z_j\rangle = 0$.
+- **`test/entanglement_test.jl`** — `schmidt_values`/`entanglement_entropy` (§8.4)
+  against a dense reduced density matrix, with $S=0$ for a product state and
+  $S=\log 2$ for a singlet.
 - **`test/reference_test.jl`** — keeps the `NaiveDMRG.Reference` baseline healthy.
 
 Run them with:
