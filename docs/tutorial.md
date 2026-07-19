@@ -197,6 +197,40 @@ neel = MPS([copy(up), copy(down), copy(up), copy(down)])
 The constructors reject mismatched neighboring bonds and non-unit open
 boundary bonds, catching common tensor-layout errors early.
 
+## 9. Measure observables
+
+A converged state is only useful once you can measure it. `expect` and
+`correlation` evaluate normalized expectation values for any local `d×d`
+operator; `spin_half_operators` provides the spin-1/2 matrices. The math is
+derived in [theory §8](theory.md).
+
+```julia
+N = 12
+H = heisenberg_mpo(N)
+_, psi = dmrg(H, random_MPS(N, 2, 16); nsweeps=20, maxdim=48,
+              cutoff=1e-11, tol=1e-9, output=false)
+
+ops = spin_half_operators()
+
+# Site-resolved magnetization ⟨Sᶻᵢ⟩ (real up to rounding for a Hermitian op).
+sz = real.(expect(psi, ops.Sz))
+println("⟨Sᶻ⟩ per site = ", round.(sz; digits=4))
+println("total Sᶻ      = ", round(sum(sz); digits=8))   # ≈ 0 (singlet)
+
+# Two-point spin correlation ⟨Sᶻ₁ Sᶻⱼ⟩.
+c1j = [real(correlation(psi, ops.Sz, ops.Sz, 1, j)) for j in 1:N]
+println("⟨Sᶻ₁ Sᶻⱼ⟩ = ", round.(c1j; digits=4))
+
+# The full N×N correlation matrix, e.g. for a structure factor.
+Czz = correlation_matrix(psi, ops.Sz, ops.Sz)
+@assert isapprox(Czz, Czz'; atol=1e-8)          # ⟨SᶻᵢSᶻⱼ⟩ = ⟨SᶻⱼSᶻᵢ⟩
+@assert all(isapprox(Czz[i,i], 0.25; atol=1e-8) for i in 1:N)  # ⟨(Sᶻᵢ)²⟩ = 1/4
+```
+
+Because operators are plain matrices, non-Hermitian correlators work too — for
+example `correlation(psi, ops.Sp, ops.Sm, i, j)` returns the (generally complex)
+$\langle S^+_i S^-_j\rangle$.
+
 ## Practical convergence checklist
 
 Before trusting a result:

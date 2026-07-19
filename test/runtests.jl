@@ -12,5 +12,6 @@ import NaiveDMRG
 @testset "NaiveDMRG.jl" begin
     include("naive_primitives_test.jl")
     include("naive_dmrg_test.jl")
+    include("observables_test.jl")
     include("reference_test.jl")
 end

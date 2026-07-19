@@ -16,6 +16,8 @@ The implementation currently supports:
 - KrylovKit local eigensolves;
 - SVD bond truncation by maximum dimension and discarded weight;
 - an open spin-1/2 Heisenberg-chain MPO;
+- local observables and two-point correlation functions (`expect`,
+  `correlation`, `correlation_matrix`);
 - comparison with exact diagonalization and ITensor on small systems.
 
 ## Installation
@@ -92,8 +94,11 @@ energy and observables of interest stop changing at the required precision.
 
 - [Tutorial](docs/tutorial.md): a complete first calculation and validation
   workflow.
+- [Theory](docs/theory.md): the algorithm derived step by step — MPS/MPO,
+  canonical forms, environments, the effective Hamiltonian as a projection,
+  SVD truncation, and the variational sweep. Shared-notation reference.
 - [Implementation](docs/implementation.md): tensor definitions, environments,
-  sweeps, truncation, and convergence.
+  sweeps, truncation, and convergence, tied to the code.
 - [Roadmap](docs/roadmap.md): current limitations and prioritized improvements.
 
 ## Current scope
