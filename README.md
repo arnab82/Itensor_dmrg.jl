@@ -15,7 +15,12 @@ The implementation currently supports:
 - matrix-free two-site effective Hamiltonians;
 - KrylovKit local eigensolves;
 - SVD bond truncation by maximum dimension and discarded weight;
-- an open spin-1/2 Heisenberg-chain MPO;
+- an open spin-1/2 Heisenberg-chain MPO, plus a generic nearest-neighbor MPO
+  builder (`nearest_neighbor_mpo`, `tfim_mpo`) for arbitrary 1D models;
+- local observables and two-point correlation functions (`expect`,
+  `correlation`, `correlation_matrix`);
+- bipartite entanglement entropy and the Schmidt spectrum
+  (`entanglement_entropy`, `schmidt_values`);
 - comparison with exact diagonalization and ITensor on small systems.
 
 ## Installation
@@ -92,8 +97,11 @@ energy and observables of interest stop changing at the required precision.
 
 - [Tutorial](docs/tutorial.md): a complete first calculation and validation
   workflow.
+- [Theory](docs/theory.md): the algorithm derived step by step — MPS/MPO,
+  canonical forms, environments, the effective Hamiltonian as a projection,
+  SVD truncation, and the variational sweep. Shared-notation reference.
 - [Implementation](docs/implementation.md): tensor definitions, environments,
-  sweeps, truncation, and convergence.
+  sweeps, truncation, and convergence, tied to the code.
 - [Roadmap](docs/roadmap.md): current limitations and prioritized improvements.
 
 ## Current scope

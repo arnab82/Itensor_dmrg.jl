@@ -32,12 +32,18 @@ using Printf
 include("core/MPS.jl")
 include("core/MPO.jl")
 include("core/heisenberg_ham.jl")
+include("core/mpo_builder.jl")
 include("core/dmrg.jl")
+include("core/observables.jl")
+include("core/entanglement.jl")
 
 export MPS, MPO, random_MPS, heisenberg_mpo, heisenberg_ham
+export nearest_neighbor_mpo, tfim_mpo
 export dmrg, dmrg!, compute_energy, overlap, dense, bond_dimensions
 export DMRGResult, SweepRecord, LocalSolveRecord
 export left_canonicalize!, right_canonicalize!, left_normalize!, right_normalize!
+export expect, correlation, correlation_matrix, spin_half_operators
+export schmidt_values, entanglement_entropy
 
 # --- ITensor reference implementation (regression comparisons only) --------
 include("reference/Reference.jl")

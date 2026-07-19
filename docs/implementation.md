@@ -1,7 +1,9 @@
 # NaiveDMRG implementation
 
 This document describes the current algorithm and the invariants relied on by
-the from-scratch solver in `src/core/`.
+the from-scratch solver in `src/core/`. For the full step-by-step derivation of
+the mathematics summarized here — the effective Hamiltonian as a projection, the
+variational bound, and the truncation error — see the [theory notes](theory.md).
 
 ## Types and index conventions
 

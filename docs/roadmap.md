@@ -1,8 +1,29 @@
 # Improvement roadmap
 
-The matrix-free two-site algorithm is now correct on the tested small-system
-reference case. The next work should broaden correctness coverage and stabilize
+The matrix-free two-site algorithm is correct on the tested small-system
+reference cases. The next work should broaden correctness coverage and stabilize
 the API before adding sophisticated performance features.
+
+## Already implemented
+
+Several items originally listed below have since landed:
+
+- **Structured results** — `dmrg`/`dmrg!` return a `DMRGResult` with per-sweep
+  history, stopping reason, and local-solve residuals.
+- **Sweep schedules** — `maxdim`, `cutoff`, `tol`, and `eig_tol` accept per-sweep
+  tuples/vectors.
+- **Explicit mutation** — `dmrg!` mutates in place; `dmrg` runs on a copy.
+- **Incremental environments** — the sweep uses `right_sweep_cache!` plus in-place
+  `absorb_left!`/`absorb_right!`; it no longer rebuilds all environments each
+  half-sweep.
+- **Generic nearest-neighbor MPO builder** — `nearest_neighbor_mpo`, `tfim_mpo`.
+- **Local observables and correlations** — `expect`, `correlation`,
+  `correlation_matrix`, `spin_half_operators`.
+- **Entanglement diagnostics** — `schmidt_values`, `entanglement_entropy`.
+
+Completed subsections below are marked **(Done.)**. The math for the from-scratch
+solver, its observables, entanglement, and the MPO builder is derived in
+[theory.md](theory.md).
 
 ## Priority 0: correctness and repository consistency
 
@@ -45,9 +66,9 @@ conventions instead of leaving them ITensor-only.
 
 ## Priority 1: stable user API
 
-### Return structured results
+### Return structured results — **(Done.)**
 
-Replace the bare `(energy, psi)` result, or supplement it, with a result object
+`DMRGResult` supplements the `(energy, psi)` destructuring with a result object
 containing:
 
 - final energy and state;
@@ -59,30 +80,30 @@ containing:
 
 This makes convergence auditable and enables plotting without parsing output.
 
-### Add sweep schedules
+### Add sweep schedules — **(Done.)**
 
-Accept scalar values or per-sweep schedules for `maxdim`, `cutoff`, `eig_tol`,
-and optional noise. Gradually increasing the bond dimension is often more
-efficient and robust than starting at the final maximum.
+`maxdim`, `cutoff`, `tol`, and `eig_tol` accept scalars or per-sweep schedules
+(tuples/vectors). Optional per-sweep noise is still open. Gradually increasing
+the bond dimension is often more efficient and robust than starting at the final
+maximum.
 
-### Make mutation explicit
+### Make mutation explicit — **(Done.)**
 
-Keep `dmrg!` for the mutating implementation and provide `dmrg` as a copying
-wrapper. At present `dmrg` mutates its input, which can surprise users and makes
-comparative experiments easier to contaminate accidentally.
+`dmrg!` is the mutating implementation and `dmrg` is the copying wrapper.
 
-### Add model-independent construction tools
+### Add model-independent construction tools — **(Partly done.)**
 
-Provide supported builders for:
+Supported builders now cover:
 
-- product MPSs;
-- sums of local operator terms;
-- generic nearest-neighbor MPOs;
-- the Hubbard model after fermionic sign conventions are verified;
-- local expectation values and correlation functions.
+- generic nearest-neighbor MPOs — `nearest_neighbor_mpo`, `tfim_mpo` **(Done)**;
+- local expectation values and correlation functions — `expect`, `correlation`
+  **(Done)**.
 
-The DMRG engine is generic over compatible `MPO`s, but users currently lack a
-safe public route to construct most of them.
+Still open:
+
+- a product-MPS / product-state builder;
+- longer-range and finite-state-machine MPOs beyond nearest neighbor;
+- the Hubbard model after fermionic sign conventions are verified.
 
 ### Make ITensor an optional dependency
 
@@ -95,13 +116,11 @@ and make the independence of the solver complete rather than merely namespaced.
 
 ## Priority 2: performance and scalability
 
-### Avoid rebuilding unused environments
+### Avoid rebuilding unused environments — **(Done.)**
 
-`sweep!` currently calls `environments`, which constructs every left and right
-environment before each half-sweep. A left-to-right sweep needs the initial
-right environments and incrementally updated left environments; the reverse
-sweep needs the opposite. Building only what each direction consumes removes
-roughly one redundant environment pass per half-sweep.
+`dmrg!` seeds each sweep with `right_sweep_cache!` and then updates only the one
+environment each local step consumes, via in-place `absorb_left!`/`absorb_right!`.
+It no longer constructs every environment before each half-sweep.
 
 ### Reuse contraction workspaces
 
@@ -150,7 +169,17 @@ After the core API and tests stabilize:
 
 ## Recommended next milestone
 
-A focused next release should complete the Priority 0 items, add a structured
-result/history type, implement `dmrg!` plus a copying `dmrg`, and eliminate
-redundant environment construction. That combination improves trustworthiness,
-usability, and speed without changing the underlying algorithm.
+With structured results, sweep schedules, incremental environments, the generic
+MPO builder, observables, and entanglement diagnostics all in place, the next
+focused steps are:
+
+1. **Parametric scalar/storage types** — generalize `MPS`, `MPO`, and the
+   environments off hard-coded `ComplexF64` so real Hamiltonians run in `Float64`
+   (Priority 2). This is the widest-reaching remaining refactor.
+2. **Single-site DMRG with subspace expansion** — an alternative sweep engine
+   alongside the two-site solver (Priority 3).
+3. **Remaining construction tools** — a product-state builder and a validated,
+   sign-correct Hubbard MPO on the native tensor conventions.
+
+Deferred for now: explicit local-eigensolver failure handling, and moving
+`NaiveDMRG.Reference` behind a package extension.
