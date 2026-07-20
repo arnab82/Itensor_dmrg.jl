@@ -71,6 +71,7 @@ const R = NaiveDMRG.Reference
 
             # Compute energy
             E = R.compute_energy(ψ, H)
+            @info "  ITensor reference energy (Néel product state, 2x2 Heisenberg)" E = E
 
             # Check that energy is a real number
             @test E isa Real

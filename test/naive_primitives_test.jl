@@ -97,6 +97,7 @@ end
         end
 
         dense_energy = real(dot(C.dense(psi), C.dense(H) * C.dense(psi)))
+        @info "  ⟨ψ|H|ψ⟩ from environments vs dense" env_left = real(cache.left[end][]) env_right = real(cache.right[1][]) dense = dense_energy
         @test cache.left[end][] ≈ dense_energy atol=1e-12
         @test cache.right[1][] ≈ dense_energy atol=1e-12
     end
