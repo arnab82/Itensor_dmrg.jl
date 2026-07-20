@@ -12,6 +12,7 @@ import NaiveDMRG
 @testset "NaiveDMRG.jl" begin
     include("naive_primitives_test.jl")
     include("naive_dmrg_test.jl")
+    include("single_site_dmrg_test.jl")
     include("mpo_builder_test.jl")
     include("observables_test.jl")
     include("entanglement_test.jl")

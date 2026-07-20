@@ -101,6 +101,20 @@ guarantee of convergence, so inspect the final `delta` and repeat with larger
 limits when necessary. `dmrg` optimizes a copy and leaves `psi0` untouched; use
 `dmrg!` to optimize a state in place.
 
+For a cheaper per-step alternative, `single_site_dmrg` optimizes one site at a
+time and uses *subspace expansion* to grow the bond dimension (see
+[theory §7.5](theory.md)). It can start from a deliberately small bond and let
+the `alpha` schedule enlarge it:
+
+```julia
+energy, psi = single_site_dmrg(
+    H, random_MPS(N, 2, 4);
+    nsweeps=30, maxdim=64, cutoff=1e-10, tol=1e-9,
+    alpha=(1e-2, 1e-3, 1e-4, 0.0),   # decay the expansion to zero to converge
+    output=false,
+)
+```
+
 ## 5. Check the result
 
 ```julia
