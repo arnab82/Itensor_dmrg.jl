@@ -1,6 +1,6 @@
-mutable struct EnvironmentCache
-    left::Vector{Array{ComplexF64,3}}
-    right::Vector{Array{ComplexF64,3}}
+mutable struct EnvironmentCache{T}
+    left::Vector{Array{T,3}}
+    right::Vector{Array{T,3}}
 end
 
 """Diagnostics from one local two-site Krylov eigensolve."""
@@ -45,9 +45,9 @@ Base.iterate(result::DMRGResult) = (result.energy, 2)
 Base.iterate(result::DMRGResult, state::Int) = state == 2 ? (result.state, 3) : nothing
 Base.getindex(result::DMRGResult, i::Int) = i == 1 ? result.energy : i == 2 ? result.state : throw(BoundsError(result, i))
 
-function EnvironmentCache(N::Integer)
-    boundary = ones(ComplexF64, 1, 1, 1)
-    return EnvironmentCache([copy(boundary) for _ in 0:N], [copy(boundary) for _ in 0:N])
+function EnvironmentCache(N::Integer, ::Type{T}=ComplexF64) where {T}
+    boundary = ones(T, 1, 1, 1)
+    return EnvironmentCache{T}([copy(boundary) for _ in 0:N], [copy(boundary) for _ in 0:N])
 end
 
 function absorb_left(L, A, W)
@@ -82,14 +82,14 @@ end
 
 function environment_buffer!(buffers, index, shape)
     if size(buffers[index]) != shape
-        buffers[index] = zeros(ComplexF64, shape)
+        buffers[index] = zeros(eltype(eltype(buffers)), shape)
     end
     return buffers[index]
 end
 
 function environments(H::MPO, psi::MPS)
     (H.N, H.d) == (psi.N, psi.d) || throw(DimensionMismatch("MPO and MPS are incompatible"))
-    cache = EnvironmentCache(psi.N)
+    cache = EnvironmentCache(psi.N, promote_type(eltype(H), eltype(psi)))
     for i in 1:psi.N
         cache.left[i + 1] = absorb_left(cache.left[i], psi.tensors[i], H.tensors[i])
     end
@@ -102,8 +102,8 @@ end
 """Build only the right environments needed to begin a left-to-right sweep."""
 function right_sweep_cache!(cache::EnvironmentCache, H::MPO, psi::MPS)
     (H.N, H.d) == (psi.N, psi.d) || throw(DimensionMismatch("MPO and MPS are incompatible"))
-    cache.left[1] .= one(ComplexF64)
-    cache.right[psi.N + 1] .= one(ComplexF64)
+    cache.left[1] .= one(eltype(cache.left[1]))
+    cache.right[psi.N + 1] .= one(eltype(cache.right[psi.N + 1]))
     # Pair i,i+1 consumes right[i+2]. Sites 1 and 2 are therefore never part
     # of a precomputed right environment for a right-moving two-site sweep.
     for site in psi.N:-1:3
@@ -115,7 +115,8 @@ function right_sweep_cache!(cache::EnvironmentCache, H::MPO, psi::MPS)
 end
 
 
-right_sweep_cache(H::MPO, psi::MPS) = right_sweep_cache!(EnvironmentCache(psi.N), H, psi)
+right_sweep_cache(H::MPO, psi::MPS) =
+    right_sweep_cache!(EnvironmentCache(psi.N, promote_type(eltype(H), eltype(psi))), H, psi)
 
 function two_site_tensor(psi::MPS, i::Integer)
     A, B = psi.tensors[i], psi.tensors[i + 1]
@@ -230,7 +231,7 @@ end
 function overlap_with_operator(bra::MPS, H::MPO, ket::MPS)
     (bra.N, bra.d) == (ket.N, ket.d) == (H.N, H.d) ||
         throw(DimensionMismatch("MPO and MPS dimensions differ"))
-    env = ones(ComplexF64, 1, 1, 1)
+    env = ones(promote_type(eltype(bra), eltype(H), eltype(ket)), 1, 1, 1)
     for i in 1:H.N
         A, W, B = bra.tensors[i], H.tensors[i], ket.tensors[i]
         @tensor next_env[ra, b, rk] := conj(A[la, so, ra]) * env[la, a, lk] *
@@ -270,12 +271,16 @@ function dmrg!(H::MPO, psi::MPS; nsweeps::Integer=20, maxdim=100,
                output::Bool=true)
     (H.N, H.d) == (psi.N, psi.d) || throw(DimensionMismatch("MPO and MPS are incompatible"))
     nsweeps >= 1 || throw(ArgumentError("nsweeps must be positive"))
+    T = promote_type(eltype(H), eltype(psi))
+    T == eltype(psi) || throw(ArgumentError(
+        "psi has scalar type $(eltype(psi)) but the Hamiltonian requires $T; " *
+        "use the copying `dmrg`, or convert psi first"))
     right_canonicalize!(psi)
     normalize!(psi)
     previous = compute_energy(H, psi)
 
     history = SweepRecord{Float64}[]
-    cache = EnvironmentCache(psi.N)
+    cache = EnvironmentCache(psi.N, T)
     for sweep in 1:nsweeps
         sweep_maxdim = Int(schedule_value(maxdim, sweep, :maxdim))
         sweep_cutoff = Float64(schedule_value(cutoff, sweep, :cutoff))
@@ -315,8 +320,13 @@ function dmrg!(H::MPO, psi::MPS; nsweeps::Integer=20, maxdim=100,
     return DMRGResult(energy, psi, false, :maximum_sweeps, history)
 end
 
-"""Run DMRG on a copy of `psi`, leaving the supplied state unchanged."""
-dmrg(H::MPO, psi::MPS; kwargs...) = dmrg!(H, copy(psi); kwargs...)
+"""
+Run DMRG on a copy of `psi`, leaving the supplied state unchanged. The copy is
+promoted to `promote_type(eltype(H), eltype(psi))`, so a real state and a complex
+Hamiltonian (or vice versa) compose without the caller converting anything.
+"""
+dmrg(H::MPO, psi::MPS; kwargs...) =
+    dmrg!(H, _promote_mps(psi, promote_type(eltype(H), eltype(psi))); kwargs...)
 
 # Backward-compatible positional interfaces. The former `hubbard` flag never
 # belonged in the generic sweep algorithm, so it is accepted but ignored.

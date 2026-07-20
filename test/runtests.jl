@@ -16,5 +16,6 @@ import NaiveDMRG
     include("mpo_builder_test.jl")
     include("observables_test.jl")
     include("entanglement_test.jl")
+    include("parametric_types_test.jl")
     include("reference_test.jl")
 end

@@ -16,8 +16,8 @@
 # so a start→channel-k→done path lays down cₖ · (Lₖ)ᵢ (Rₖ)ᵢ₊₁ on a bond and a
 # start→done path lays down an on-site term.
 
-_as_op(d, op) =
-    size(op) == (d, d) ? Array{ComplexF64}(op) :
+_as_op(::Type{T}, d, op) where {T} =
+    size(op) == (d, d) ? Array{T}(op) :
         throw(DimensionMismatch("operator must be $(d)×$(d) to match the physical dimension"))
 
 """
@@ -43,30 +43,31 @@ H = nearest_neighbor_mpo(N, 2;
         bond   = [(J/2, Sp, Sm), (J/2, Sm, Sp), (J, Sz, Sz)])
 ```
 """
-function nearest_neighbor_mpo(N::Integer, d::Integer; onsite=(), bond=())
+function nearest_neighbor_mpo(N::Integer, d::Integer; onsite=(), bond=(),
+                              T::Type{<:Number}=ComplexF64)
     N >= 2 || throw(ArgumentError("N must be at least 2"))
     d >= 1 || throw(ArgumentError("d must be positive"))
     K = length(bond)
     w = K + 2
-    id = Matrix{ComplexF64}(I, d, d)
+    id = Matrix{T}(I, d, d)
 
     # Accumulate all on-site terms into a single d×d operator.
-    O = zeros(ComplexF64, d, d)
+    O = zeros(T, d, d)
     for (c, op) in onsite
-        O .+= ComplexF64(c) .* _as_op(d, op)
+        O .+= convert(T, c) .* _as_op(T, d, op)
     end
 
-    bulk = zeros(ComplexF64, w, d, d, w)
+    bulk = zeros(T, w, d, d, w)
     bulk[1, :, :, 1] .= id          # completed → completed
     bulk[w, :, :, w] .= id          # not-started → not-started
     bulk[w, :, :, 1] .= O           # on-site: start → done
     for (k, term) in enumerate(bond)
         c, L, R = term
-        bulk[w, :, :, 1 + k] .= ComplexF64(c) .* _as_op(d, L)   # start → channel k
-        bulk[1 + k, :, :, 1] .= _as_op(d, R)                    # channel k → done
+        bulk[w, :, :, 1 + k] .= convert(T, c) .* _as_op(T, d, L)   # start → channel k
+        bulk[1 + k, :, :, 1] .= _as_op(T, d, R)                    # channel k → done
     end
 
-    tensors = Vector{Array{ComplexF64,4}}(undef, N)
+    tensors = Vector{Array{T,4}}(undef, N)
     tensors[1] = copy(bulk[w:w, :, :, :])       # left boundary starts in state w
     for i in 2:N-1
         tensors[i] = copy(bulk)
@@ -85,10 +86,11 @@ Transverse-field Ising model on an open spin-1/2 chain, in spin operators
 H = -J Σᵢ Sᶻᵢ Sᶻᵢ₊₁ - h Σᵢ Sˣᵢ .
 ```
 
-A convenience wrapper around [`nearest_neighbor_mpo`](@ref).
+A convenience wrapper around [`nearest_neighbor_mpo`](@ref). The model is real,
+so `T=Float64` gives a real MPO.
 """
-function tfim_mpo(N::Integer; J::Real=1.0, h::Real=1.0)
-    Sx = ComplexF64[0 0.5; 0.5 0]
-    Sz = ComplexF64[0.5 0; 0 -0.5]
-    return nearest_neighbor_mpo(N, 2; onsite=[(-h, Sx)], bond=[(-J, Sz, Sz)])
+function tfim_mpo(N::Integer; J::Real=1.0, h::Real=1.0, T::Type{<:Number}=ComplexF64)
+    Sx = T[0 0.5; 0.5 0]
+    Sz = T[0.5 0; 0 -0.5]
+    return nearest_neighbor_mpo(N, 2; onsite=[(-h, Sx)], bond=[(-J, Sz, Sz)], T=T)
 end

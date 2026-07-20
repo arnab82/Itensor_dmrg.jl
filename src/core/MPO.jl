@@ -1,10 +1,16 @@
-"""A dense MPO with tensors `(left, physical_out, physical_in, right)`."""
-struct MPO
-    tensors::Vector{Array{ComplexF64,4}}
+"""
+    MPO{T}
+
+A dense MPO with tensors ordered `(left, physical_out, physical_in, right)` and
+scalar type `T`. Construct one from a vector of rank-4 arrays; mixed element
+types are promoted to a common `T`.
+"""
+struct MPO{T<:Number}
+    tensors::Vector{Array{T,4}}
     N::Int
     d::Int
 
-    function MPO(tensors::Vector{Array{ComplexF64,4}})
+    function MPO(tensors::Vector{Array{T,4}}) where {T<:Number}
         isempty(tensors) && throw(ArgumentError("an MPO needs at least one site"))
         d = size(first(tensors), 2)
         size(first(tensors), 1) == 1 || throw(DimensionMismatch("left boundary bond must be 1"))
@@ -13,12 +19,17 @@ struct MPO
             throw(DimensionMismatch("MPO physical dimensions differ"))
         all(size(tensors[i], 4) == size(tensors[i + 1], 1) for i in 1:length(tensors)-1) ||
             throw(DimensionMismatch("neighboring MPO bonds differ"))
-        new(tensors, length(tensors), d)
+        new{T}(tensors, length(tensors), d)
     end
 end
 
-MPO(tensors::Vector{<:AbstractArray{<:Number,4}}) =
-    MPO([Array{ComplexF64,4}(W) for W in tensors])
+function MPO(tensors::AbstractVector{<:AbstractArray{<:Number,4}})
+    T = isempty(tensors) ? ComplexF64 : promote_type(map(eltype, tensors)...)
+    return MPO([Array{T,4}(W) for W in tensors])
+end
+
+Base.eltype(::MPO{T}) where {T} = T
+Base.eltype(::Type{MPO{T}}) where {T} = T
 
 # Compatibility with the original field name.
 function Base.getproperty(H::MPO, name::Symbol)

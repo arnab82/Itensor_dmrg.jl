@@ -20,8 +20,9 @@ W[left MPO bond, physical output, physical input, right MPO bond]
 ```
 
 Both structures use open boundaries. The first left bond and final right bond
-must have dimension one. All arrays are currently materialized as
-`Array{ComplexF64}`.
+must have dimension one. `MPS{T}` and `MPO{T}` are parametric in the scalar type
+`T` (default `ComplexF64`); a real model built with `T=Float64` runs a fully
+real solve.
 
 ## Canonicalization
 
@@ -136,7 +137,8 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 - Sites share one physical dimension `d`.
 - Only open boundaries are accepted.
 - The local effective operator is assumed Hermitian.
-- Tensors are hard-coded to dense `ComplexF64` arrays.
+- Tensors are dense `Array{T}` with `T` a scalar-type parameter (real or
+  complex); block sparsity is not yet implemented.
 - No quantum-number block sparsity is implemented.
 - No convergence history object or checkpoint is returned.
 - Only the Heisenberg MPO builder is part of the supported public API.

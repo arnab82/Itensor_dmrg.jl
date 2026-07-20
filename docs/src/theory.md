@@ -10,13 +10,19 @@ index orders:
 
 | Object | Stored as | Index order |
 | --- | --- | --- |
-| MPS site tensor | `Array{ComplexF64,3}` | `A[left, physical, right]` |
-| MPO site tensor | `Array{ComplexF64,4}` | `W[left, physical_out, physical_in, right]` |
-| Environment | `Array{ComplexF64,3}` | `[bra bond, MPO bond, ket bond]` |
+| MPS site tensor | `Array{T,3}` | `A[left, physical, right]` |
+| MPO site tensor | `Array{T,4}` | `W[left, physical_out, physical_in, right]` |
+| Environment | `Array{T,3}` | `[bra bond, MPO bond, ket bond]` |
+
+The scalar type `T` is a parameter of `MPS{T}` and `MPO{T}`. It defaults to
+`ComplexF64`; a real Hamiltonian and state (built with `T=Float64`) run through
+a fully real pipeline. Environments and effective Hamiltonians are formed in
+`promote_type(eltype(H), eltype(psi))`, so mixing a real state with a complex
+Hamiltonian works — the copying `dmrg` promotes the state automatically.
 
 Throughout, `N` is the number of sites, `d` the physical dimension (`d = 2`
-for spin-1/2), and an overbar $\overline{(\cdot)}$ denotes complex conjugation.
-Repeated indices inside a sum are contracted.
+for spin-1/2), and an overbar $\overline{(\cdot)}$ denotes complex conjugation
+(the identity for real `T`). Repeated indices inside a sum are contracted.
 
 ---
 
@@ -764,9 +770,9 @@ $i=j$ inserts the product $O^1 O^2$. These are `correlation(psi, op1, op2, i, j)
 and, assembled over all pairs, `correlation_matrix` returning
 $C[i,j] = \langle\hat O^1_i \hat O^2_j\rangle$.
 
-Values are `ComplexF64`: a Hermitian operator gives a real result up to rounding,
-while a genuinely non-Hermitian correlation such as
-$\langle S^+_i S^-_j\rangle$ is complex.
+Values have scalar type `promote_type(eltype(psi), eltype(op1), eltype(op2))`:
+real for a real state and real operators, and complex when either is — as for a
+genuinely non-Hermitian correlation such as $\langle S^+_i S^-_j\rangle$.
 
 ### 8.3 Example: spin-1/2
 
