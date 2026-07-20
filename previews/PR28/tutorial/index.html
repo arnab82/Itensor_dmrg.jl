@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial · NaiveDMRG.jl</title><meta name="title" content="Tutorial · NaiveDMRG.jl"/><meta property="og:title" content="Tutorial · NaiveDMRG.jl"/><meta property="twitter:title" content="Tutorial · NaiveDMRG.jl"/><meta name="description" content="Documentation for NaiveDMRG.jl."/><meta property="og:description" content="Documentation for NaiveDMRG.jl."/><meta property="twitter:description" content="Documentation for NaiveDMRG.jl."/><meta property="og:url" content="https://arnab82.github.io/NaiveDMRG.jl/tutorial/"/><meta property="twitter:url" content="https://arnab82.github.io/NaiveDMRG.jl/tutorial/"/><link rel="canonical" href="https://arnab82.github.io/NaiveDMRG.jl/tutorial/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">NaiveDMRG.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Tutorial</a><ul class="internal"><li><a class="tocitem" href="#1.-Activate-the-project"><span>1. Activate the project</span></a></li><li><a class="tocitem" href="#2.-Build-the-Hamiltonian"><span>2. Build the Hamiltonian</span></a></li><li><a class="tocitem" href="#3.-Build-a-reproducible-initial-MPS"><span>3. Build a reproducible initial MPS</span></a></li><li><a class="tocitem" href="#4.-Run-two-site-DMRG"><span>4. Run two-site DMRG</span></a></li><li><a class="tocitem" href="#5.-Check-the-result"><span>5. Check the result</span></a></li><li><a class="tocitem" href="#6.-Validate-a-small-system-exactly"><span>6. Validate a small system exactly</span></a></li><li><a class="tocitem" href="#7.-Compare-with-ITensor"><span>7. Compare with ITensor</span></a></li><li><a class="tocitem" href="#8.-Construct-an-MPS-manually"><span>8. Construct an MPS manually</span></a></li><li><a class="tocitem" href="#9.-Measure-observables"><span>9. Measure observables</span></a></li><li><a class="tocitem" href="#10.-Entanglement"><span>10. Entanglement</span></a></li><li><a class="tocitem" href="#Practical-convergence-checklist"><span>Practical convergence checklist</span></a></li></ul></li><li><a class="tocitem" href="../theory/">Theory</a></li><li><a class="tocitem" href="../implementation/">Implementation</a></li><li><a class="tocitem" href="../api/">API reference</a></li><li><a class="tocitem" href="../roadmap/">Roadmap</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Tutorial</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Tutorial</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/arnab82/NaiveDMRG.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/arnab82/NaiveDMRG.jl/blob/main/docs/src/tutorial.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorial:-ground-state-of-a-Heisenberg-chain"><a class="docs-heading-anchor" href="#Tutorial:-ground-state-of-a-Heisenberg-chain">Tutorial: ground state of a Heisenberg chain</a><a id="Tutorial:-ground-state-of-a-Heisenberg-chain-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial:-ground-state-of-a-Heisenberg-chain" title="Permalink"></a></h1><p>This tutorial runs the NaiveDMRG two-site solver, checks its result, and then compares a small calculation with exact diagonalization and ITensor.</p><h2 id="1.-Activate-the-project"><a class="docs-heading-anchor" href="#1.-Activate-the-project">1. Activate the project</a><a id="1.-Activate-the-project-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Activate-the-project" title="Permalink"></a></h2><p>Start Julia in the repository root:</p><pre><code class="language-bash hljs">julia --project=.</code></pre><p>Then load the package:</p><pre><code class="language-julia hljs">using NaiveDMRG
+using LinearAlgebra
+using Random</code></pre><p>The from-scratch solver is the package&#39;s primary API, so <code>heisenberg_mpo</code>, <code>random_MPS</code>, <code>dmrg</code>, <code>dense</code>, and friends are all exported directly. The ITensor reference code is kept out of the way in the <code>NaiveDMRG.Reference</code> submodule (see step 7).</p><h2 id="2.-Build-the-Hamiltonian"><a class="docs-heading-anchor" href="#2.-Build-the-Hamiltonian">2. Build the Hamiltonian</a><a id="2.-Build-the-Hamiltonian-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Build-the-Hamiltonian" title="Permalink"></a></h2><p>For an open spin-1/2 chain of length <code>N</code>, the implemented Hamiltonian is</p><p class="math-container">\[H = J \sum_{n=1}^{N-1}
+    \left(S^x_n S^x_{n+1} + S^y_n S^y_{n+1} + S^z_n S^z_{n+1}\right)
+    + h_z \sum_{n=1}^{N} S^z_n.\]</p><p>Construct its MPO with:</p><pre><code class="language-julia hljs">N = 20
+H = heisenberg_mpo(N; J=1.0, hz=0.0)</code></pre><p>The local physical dimension is two and the MPO bond dimension is five.</p><p>To go beyond the Heisenberg chain, <code>nearest_neighbor_mpo</code> compiles any translation-invariant on-site + nearest-neighbor Hamiltonian (see <a href="../theory/">theory §2.4</a>). For example the transverse-field Ising model is the one-liner <code>tfim_mpo(N; J=1.0, h=1.0)</code>, equivalent to</p><pre><code class="language-julia hljs">ops = spin_half_operators()
+H = nearest_neighbor_mpo(N, 2;
+        onsite = [(-1.0, ops.Sx)],
+        bond   = [(-1.0, ops.Sz, ops.Sz)])</code></pre><p><code>MPS{T}</code> and <code>MPO{T}</code> are parametric in the scalar type. The Heisenberg and Ising models are real, so passing <code>T=Float64</code> runs a fully real solve (half the memory, no complex arithmetic):</p><pre><code class="language-julia hljs">H = heisenberg_mpo(20; T=Float64)
+psi0 = random_MPS(20, 2, 16; T=Float64)
+energy, psi = dmrg(H, psi0; nsweeps=20, maxdim=64, cutoff=1e-10, tol=1e-8)
+# eltype(psi) == Float64</code></pre><p>Mixing types is fine too: <code>dmrg</code> runs on a copy promoted to <code>promote_type(eltype(H), eltype(psi))</code>, so a real state with a complex Hamiltonian composes without any manual conversion.</p><h2 id="3.-Build-a-reproducible-initial-MPS"><a class="docs-heading-anchor" href="#3.-Build-a-reproducible-initial-MPS">3. Build a reproducible initial MPS</a><a id="3.-Build-a-reproducible-initial-MPS-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Build-a-reproducible-initial-MPS" title="Permalink"></a></h2><pre><code class="language-julia hljs">rng = MersenneTwister(1234)
+psi0 = random_MPS(N, 2, 16; rng=rng)
+
+println(bond_dimensions(psi0))
+println(norm(psi0))</code></pre><p><code>random_MPS</code> avoids impossible oversized bonds near the boundaries, right-canonicalizes the state, and normalizes it. Supplying an RNG makes a run reproducible.</p><h2 id="4.-Run-two-site-DMRG"><a class="docs-heading-anchor" href="#4.-Run-two-site-DMRG">4. Run two-site DMRG</a><a id="4.-Run-two-site-DMRG-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Run-two-site-DMRG" title="Permalink"></a></h2><pre><code class="language-julia hljs">energy, psi = dmrg(
+    H,
+    psi0;
+    nsweeps=20,
+    maxdim=64,
+    cutoff=1e-10,
+    tol=1e-8,
+    eig_tol=1e-10,
+    output=true,
+)</code></pre><p>A convergence line has this form:</p><pre><code class="language-text hljs">NaiveDMRG sweep 4: energy = -8.682...  delta = 2.1e-09  discarded = 3.4e-11</code></pre><p>The quantities mean:</p><ul><li><code>energy</code>: the normalized expectation value after both sweep directions;</li><li><code>delta</code>: absolute energy change from the preceding complete sweep;</li><li><code>discarded</code>: summed squared singular values removed during that sweep.</li></ul><p>The solver stops early when <code>delta &lt;= tol</code>. Reaching <code>nsweeps</code> is not itself a guarantee of convergence, so inspect the final <code>delta</code> and repeat with larger limits when necessary. <code>dmrg</code> optimizes a copy and leaves <code>psi0</code> untouched; use <code>dmrg!</code> to optimize a state in place.</p><p>For a cheaper per-step alternative, <code>single_site_dmrg</code> optimizes one site at a time and uses <em>subspace expansion</em> to grow the bond dimension (see <a href="../theory/">theory §7.5</a>). It can start from a deliberately small bond and let the <code>alpha</code> schedule enlarge it:</p><pre><code class="language-julia hljs">energy, psi = single_site_dmrg(
+    H, random_MPS(N, 2, 4);
+    nsweeps=30, maxdim=64, cutoff=1e-10, tol=1e-9,
+    alpha=(1e-2, 1e-3, 1e-4, 0.0),   # decay the expansion to zero to converge
+    output=false,
+)</code></pre><h2 id="5.-Check-the-result"><a class="docs-heading-anchor" href="#5.-Check-the-result">5. Check the result</a><a id="5.-Check-the-result-1"></a><a class="docs-heading-anchor-permalink" href="#5.-Check-the-result" title="Permalink"></a></h2><pre><code class="language-julia hljs">@assert isapprox(norm(psi), 1.0; atol=1e-10)
+
+measured_energy = compute_energy(H, psi)
+@assert isapprox(measured_energy, energy; atol=1e-10)
+
+println(&quot;E = &quot;, energy)
+println(&quot;bonds = &quot;, bond_dimensions(psi))</code></pre><p>To test bond-dimension convergence, repeat the calculation with increasing <code>maxdim</code>, preferably starting each refinement from the previous optimized MPS:</p><pre><code class="language-julia hljs">for chi in (16, 32, 64, 128)
+    global energy, psi = dmrg(
+        H,
+        psi;
+        nsweeps=10,
+        maxdim=chi,
+        cutoff=1e-11,
+        tol=1e-9,
+        output=false,
+    )
+    println(&quot;maxdim=$chi  energy=$energy&quot;)
+end</code></pre><h2 id="6.-Validate-a-small-system-exactly"><a class="docs-heading-anchor" href="#6.-Validate-a-small-system-exactly">6. Validate a small system exactly</a><a id="6.-Validate-a-small-system-exactly-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Validate-a-small-system-exactly" title="Permalink"></a></h2><p>Never convert a production-sized state or operator to a dense object. For four sites, however, dense conversion is a useful correctness check:</p><pre><code class="language-julia hljs">Nsmall = 4
+Hsmall = heisenberg_mpo(Nsmall)
+exact_energy = eigmin(Hermitian(dense(Hsmall)))
+
+rng = MersenneTwister(8128)
+psi_small = random_MPS(Nsmall, 2, 8; rng=rng)
+dmrg_energy, psi_small = dmrg(
+    Hsmall,
+    psi_small;
+    nsweeps=8,
+    maxdim=8,
+    cutoff=1e-12,
+    tol=1e-10,
+    output=false,
+)
+
+println(&quot;exact = &quot;, exact_energy)
+println(&quot;naive = &quot;, dmrg_energy)
+println(&quot;ΔE    = &quot;, abs(dmrg_energy - exact_energy))</code></pre><p>For this chain, the ground-state energy is approximately <code>-1.6160254037844386</code>.</p><h2 id="7.-Compare-with-ITensor"><a class="docs-heading-anchor" href="#7.-Compare-with-ITensor">7. Compare with ITensor</a><a id="7.-Compare-with-ITensor-1"></a><a class="docs-heading-anchor-permalink" href="#7.-Compare-with-ITensor" title="Permalink"></a></h2><p>ITensor is used here only to produce an independent reference value. Its DMRG and Hamiltonian builders live in <code>NaiveDMRG.Reference</code>. Because ITensor exports its own <code>MPS</code>/<code>MPO</code> types, import it qualified to avoid clashing with the <code>NaiveDMRG.MPS</code>/<code>MPO</code> brought in by <code>using NaiveDMRG</code>:</p><pre><code class="language-julia hljs">import ITensors
+import ITensorMPS
+
+Nsmall = 4
+sites = ITensorMPS.siteinds(&quot;S=1/2&quot;, Nsmall)
+ops = NaiveDMRG.Reference.heisenberg_hamiltonian(Nsmall, 1, 1.0)
+H_itensor = ITensorMPS.MPO(ops, sites)
+initial = ITensorMPS.productMPS(sites, [isodd(i) ? &quot;Up&quot; : &quot;Dn&quot; for i in 1:Nsmall])
+
+itensor_energy, _ = ITensorMPS.dmrg(
+    H_itensor,
+    initial;
+    nsweeps=8,
+    maxdim=8,
+    cutoff=1e-12,
+    outputlevel=0,
+)
+
+println(&quot;naive   = &quot;, dmrg_energy)
+println(&quot;ITensor = &quot;, itensor_energy)</code></pre><p>The regression test performs this three-way comparison automatically.</p><h2 id="8.-Construct-an-MPS-manually"><a class="docs-heading-anchor" href="#8.-Construct-an-MPS-manually">8. Construct an MPS manually</a><a id="8.-Construct-an-MPS-manually-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Construct-an-MPS-manually" title="Permalink"></a></h2><p>MPS tensors use <code>(left, physical, right)</code> ordering. A four-site product state therefore has shapes <code>(1,2,1)</code> at every site:</p><pre><code class="language-julia hljs">up = reshape(ComplexF64[1, 0], 1, 2, 1)
+down = reshape(ComplexF64[0, 1], 1, 2, 1)
+neel = MPS([copy(up), copy(down), copy(up), copy(down)])
+
+@assert norm(neel) ≈ 1</code></pre><p>The constructors reject mismatched neighboring bonds and non-unit open boundary bonds, catching common tensor-layout errors early.</p><h2 id="9.-Measure-observables"><a class="docs-heading-anchor" href="#9.-Measure-observables">9. Measure observables</a><a id="9.-Measure-observables-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Measure-observables" title="Permalink"></a></h2><p>A converged state is only useful once you can measure it. <code>expect</code> and <code>correlation</code> evaluate normalized expectation values for any local <code>d×d</code> operator; <code>spin_half_operators</code> provides the spin-1/2 matrices. The math is derived in <a href="../theory/">theory §8</a>.</p><pre><code class="language-julia hljs">N = 12
+H = heisenberg_mpo(N)
+_, psi = dmrg(H, random_MPS(N, 2, 16); nsweeps=20, maxdim=48,
+              cutoff=1e-11, tol=1e-9, output=false)
+
+ops = spin_half_operators()
+
+# Site-resolved magnetization ⟨Sᶻᵢ⟩ (real up to rounding for a Hermitian op).
+sz = real.(expect(psi, ops.Sz))
+println(&quot;⟨Sᶻ⟩ per site = &quot;, round.(sz; digits=4))
+println(&quot;total Sᶻ      = &quot;, round(sum(sz); digits=8))   # ≈ 0 (singlet)
+
+# Two-point spin correlation ⟨Sᶻ₁ Sᶻⱼ⟩.
+c1j = [real(correlation(psi, ops.Sz, ops.Sz, 1, j)) for j in 1:N]
+println(&quot;⟨Sᶻ₁ Sᶻⱼ⟩ = &quot;, round.(c1j; digits=4))
+
+# The full N×N correlation matrix, e.g. for a structure factor.
+Czz = correlation_matrix(psi, ops.Sz, ops.Sz)
+@assert isapprox(Czz, Czz&#39;; atol=1e-8)          # ⟨SᶻᵢSᶻⱼ⟩ = ⟨SᶻⱼSᶻᵢ⟩
+@assert all(isapprox(Czz[i,i], 0.25; atol=1e-8) for i in 1:N)  # ⟨(Sᶻᵢ)²⟩ = 1/4</code></pre><p>Because operators are plain matrices, non-Hermitian correlators work too — for example <code>correlation(psi, ops.Sp, ops.Sm, i, j)</code> returns the (generally complex) <span>$\langle S^+_i S^-_j\rangle$</span>.</p><h2 id="10.-Entanglement"><a class="docs-heading-anchor" href="#10.-Entanglement">10. Entanglement</a><a id="10.-Entanglement-1"></a><a class="docs-heading-anchor-permalink" href="#10.-Entanglement" title="Permalink"></a></h2><p>The bipartite entanglement across each bond — the quantity a small <code>maxdim</code> is allowed to discard — is available directly (see <a href="../theory/">theory §8.4</a>):</p><pre><code class="language-julia hljs"># Schmidt values (σₖ, with Σσₖ² = 1) across the middle bond.
+σ = schmidt_values(psi, N ÷ 2)
+println(&quot;Schmidt spectrum = &quot;, round.(σ; digits=4))
+
+# Von Neumann entropy S(b) = -Σ σₖ² log σₖ² across every bond (nats).
+S = entanglement_entropy(psi)
+println(&quot;entanglement profile = &quot;, round.(S; digits=4))
+println(&quot;bits at the center   = &quot;, entanglement_entropy(psi, N ÷ 2; base=2))</code></pre><p>A product state has <code>S = 0</code> everywhere; an open critical chain shows the familiar entropy peak in the middle. If the central entropy is close to <code>log(maxdim)</code>, the bond dimension is saturating and should be increased.</p><h2 id="Practical-convergence-checklist"><a class="docs-heading-anchor" href="#Practical-convergence-checklist">Practical convergence checklist</a><a id="Practical-convergence-checklist-1"></a><a class="docs-heading-anchor-permalink" href="#Practical-convergence-checklist" title="Permalink"></a></h2><p>Before trusting a result:</p><ol><li>Confirm the energy change is below the requested tolerance.</li><li>Increase <code>maxdim</code> and verify the result is stable.</li><li>Reduce <code>cutoff</code> and <code>eig_tol</code> and verify stability.</li><li>Try more than one initial state when metastability is plausible.</li><li>Compare small versions of the model with exact diagonalization.</li><li>Compare representative cases with ITensor while the solver matures.</li></ol></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../theory/">Theory »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 20 July 2026 15:13">Monday 20 July 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
