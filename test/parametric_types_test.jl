@@ -1,7 +1,7 @@
 using Random
 using LinearAlgebra
 
-@testset "Parametric scalar types" begin
+@testset verbose = true "Parametric scalar types" begin
     C = NaiveDMRG
     N = 6
 
@@ -22,6 +22,7 @@ using LinearAlgebra
         exact = eigmin(Hermitian(C.dense(Hr)))
         e, psi = C.dmrg(Hr, C.random_MPS(N, 2, 16; rng=MersenneTwister(2), T=Float64);
                         nsweeps=12, maxdim=16, cutoff=1e-12, tol=1e-10, output=false)
+        @info "  full real (Float64) DMRG" energy = e exact = exact eltype = eltype(psi)
         @test psi isa C.MPS{Float64}
         @test e isa Float64
         @test e ≈ exact atol=1e-9

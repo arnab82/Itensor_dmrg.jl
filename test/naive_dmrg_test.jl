@@ -61,5 +61,6 @@ using Random
     itensor_energy, _ = ITensorMPS.dmrg(H_itensor, initial;
                                         nsweeps=8, maxdim=8, cutoff=1e-12,
                                         outputlevel=0)
+    @info "  two-site DMRG ground state (N=4 Heisenberg)" exact = exact_energy custom = custom_energy itensor = itensor_energy
     @test custom_energy ≈ itensor_energy atol=1e-9
 end

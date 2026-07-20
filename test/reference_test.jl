@@ -4,7 +4,7 @@
 
 const R = NaiveDMRG.Reference
 
-@testset "NaiveDMRG.Reference (ITensor baseline)" begin
+@testset verbose = true "NaiveDMRG.Reference (ITensor baseline)" begin
 
     @testset "Heisenberg Hamiltonian" begin
         @testset "Small lattice Heisenberg" begin

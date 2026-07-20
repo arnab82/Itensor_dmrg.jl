@@ -74,7 +74,7 @@ function two_site_embedding(psi, site)
     return embedding, shape
 end
 
-@testset "NaiveDMRG contraction primitives against dense references" begin
+@testset verbose = true "NaiveDMRG contraction primitives against dense references" begin
     C = NaiveDMRG
     rng = MersenneTwister(20240718)
     H = C.heisenberg_mpo(4; J=0.7, hz=0.2)

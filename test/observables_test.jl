@@ -1,7 +1,7 @@
 using Random
 using LinearAlgebra
 
-@testset "Local observables and correlations" begin
+@testset verbose = true "Local observables and correlations" begin
     C = NaiveDMRG
     ops = C.spin_half_operators()
     Sz, Sp, Sm, Id = ops.Sz, ops.Sp, ops.Sm, ops.Id

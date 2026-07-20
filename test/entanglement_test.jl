@@ -1,7 +1,7 @@
 using Random
 using LinearAlgebra
 
-@testset "Entanglement entropy and Schmidt spectrum" begin
+@testset verbose = true "Entanglement entropy and Schmidt spectrum" begin
     C = NaiveDMRG
 
     @testset "product state has zero entanglement" begin

@@ -1,7 +1,7 @@
 using Random
 using LinearAlgebra
 
-@testset "Single-site DMRG with subspace expansion" begin
+@testset verbose = true "Single-site DMRG with subspace expansion" begin
     C = NaiveDMRG
     alpha = (1e-2, 1e-2, 1e-3, 1e-3, 1e-4, 1e-5, 0.0)
 
@@ -17,6 +17,7 @@ using LinearAlgebra
         result = C.single_site_dmrg(H, psi0; nsweeps=40, maxdim=8, cutoff=1e-12,
                                     tol=1e-10, alpha=alpha, output=false)
         e, psi = result
+        @info "  single-site DMRG grew the bond via subspace expansion" start_bond = 2 final_bond = maximum(C.bond_dimensions(psi)) energy = e exact = exact ΔE = abs(e - exact)
         @test result isa C.DMRGResult
         @test e ≈ exact atol=1e-7
         @test maximum(C.bond_dimensions(psi)) > 2       # subspace expansion grew the bond
