@@ -23,5 +23,8 @@ docs/site/
 # environment.
 !Manifest.toml
 
+# The docs environment records a local dev path; CI regenerates it.
+docs/Manifest.toml
+
 # Test files
 test_environment_cache.jl

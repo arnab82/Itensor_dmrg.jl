@@ -1,9 +1,13 @@
 # NaiveDMRG.jl
 
-`NaiveDMRG.jl` is an independent, finite-system, two-site DMRG implementation
-for open-boundary matrix-product states, written from scratch in Julia. The
-name reflects its intent: a small, readable, "naive" DMRG you can follow
-end-to-end, rather than a production tensor-network framework.
+[![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://arnab82.github.io/NaiveDMRG.jl/)
+
+`NaiveDMRG.jl` is an independent, finite-system DMRG implementation for
+open-boundary matrix-product states, written from scratch in Julia. The name
+reflects its intent: a small, readable, "naive" DMRG you can follow end-to-end,
+rather than a production tensor-network framework.
+
+📖 **Live documentation: <https://arnab82.github.io/NaiveDMRG.jl/>**
 
 ITensor is retained only as a reference implementation for regression tests and
 numerical comparison; the solver itself never calls ITensor.
@@ -96,14 +100,18 @@ energy and observables of interest stop changing at the required precision.
 
 ## Documentation
 
-- [Tutorial](docs/tutorial.md): a complete first calculation and validation
+The full documentation is published at
+<https://arnab82.github.io/NaiveDMRG.jl/>. The sources live in `docs/src/`:
+
+- [Tutorial](docs/src/tutorial.md): a complete first calculation and validation
   workflow.
-- [Theory](docs/theory.md): the algorithm derived step by step — MPS/MPO,
+- [Theory](docs/src/theory.md): the algorithm derived step by step — MPS/MPO,
   canonical forms, environments, the effective Hamiltonian as a projection,
-  SVD truncation, and the variational sweep. Shared-notation reference.
-- [Implementation](docs/implementation.md): tensor definitions, environments,
+  SVD truncation, the variational sweep, subspace expansion, observables, and
+  entanglement. Shared-notation reference.
+- [Implementation](docs/src/implementation.md): tensor definitions, environments,
   sweeps, truncation, and convergence, tied to the code.
-- [Roadmap](docs/roadmap.md): current limitations and prioritized improvements.
+- [Roadmap](docs/src/roadmap.md): current status and prioritized improvements.
 
 ## Current scope
 
