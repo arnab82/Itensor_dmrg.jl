@@ -14,7 +14,8 @@ numerical comparison; the solver itself never calls ITensor.
 
 The implementation currently supports:
 
-- dense complex MPS and MPO tensors;
+- dense MPS and MPO tensors with a parametric scalar type — `MPS{T}`/`MPO{T}`,
+  `ComplexF64` by default or real `Float64` for a fully real solve;
 - left and right canonicalization;
 - matrix-free two-site effective Hamiltonians;
 - single-site DMRG with subspace expansion (`single_site_dmrg`);
@@ -72,6 +73,15 @@ println("bond dimensions = ", bond_dimensions(psi))
 
 `dmrg` runs on a copy and returns `(energy, psi)`; use `dmrg!` to optimize a
 state in place.
+
+For a real model, pass `T=Float64` to build a real MPO and state — the whole
+solve then runs without complex arithmetic:
+
+```julia
+H = heisenberg_mpo(20; T=Float64)
+psi0 = random_MPS(20, 2, 16; T=Float64)
+energy, psi = dmrg(H, psi0; nsweeps=20, maxdim=64)   # eltype(psi) == Float64
+```
 
 ## Tensor conventions
 
