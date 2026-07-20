@@ -18,6 +18,8 @@ using LinearAlgebra
             built = C.nearest_neighbor_mpo(N, 2;
                 onsite = [(hz, Sz)],
                 bond   = [(J / 2, Sp, Sm), (J / 2, Sm, Sp), (J, Sz, Sz)])
+            Δ = maximum(abs, C.dense(built) - C.dense(C.heisenberg_mpo(N; J=J, hz=hz)))
+            @info "  builder reproduces heisenberg_mpo" N = N J = J hz = hz max_abs_diff = Δ
             @test C.dense(built) ≈ C.dense(C.heisenberg_mpo(N; J=J, hz=hz)) atol=1e-12
             @test size(built.tensors[2], 1) == 5          # w = K + 2 = 5
             @test size(built.tensors[2], 4) == 5
@@ -42,6 +44,7 @@ using LinearAlgebra
         exact = eigmin(Hermitian(Hdense))
         e, _ = C.dmrg(H, C.random_MPS(N, 2, 16); nsweeps=12, maxdim=16,
                       cutoff=1e-12, tol=1e-10, output=false)
+        @info "  TFIM(N=6, J=h=1) ground state" dmrg = e exact = exact
         @test e ≈ exact atol=1e-6
     end
 

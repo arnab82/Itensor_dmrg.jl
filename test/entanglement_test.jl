@@ -22,6 +22,7 @@ using LinearAlgebra
         A2 = zeros(ComplexF64, 2, 2, 1); A2[1, 2, 1] = 1 / √2; A2[2, 1, 1] = -1 / √2
         singlet = C.MPS([A1, A2])
 
+        @info "  singlet entanglement" schmidt = C.schmidt_values(singlet, 1) S_nats = C.entanglement_entropy(singlet, 1) S_bits = C.entanglement_entropy(singlet, 1; base=2)
         @test C.schmidt_values(singlet, 1) ≈ [1/√2, 1/√2] atol=1e-12
         @test C.entanglement_entropy(singlet, 1) ≈ log(2) atol=1e-12
         @test C.entanglement_entropy(singlet, 1; base=2) ≈ 1.0 atol=1e-12
@@ -33,6 +34,7 @@ using LinearAlgebra
         psi = C.random_MPS(N, 2, 6; rng=rng)
         v = C.dense(psi)
         v ./= norm(v)
+        @info "  random MPS entanglement profile (per bond)" S = C.entanglement_entropy(psi)
 
         for b in 1:N-1
             sref = svdvals(reshape(v, 2^b, 2^(N - b)))

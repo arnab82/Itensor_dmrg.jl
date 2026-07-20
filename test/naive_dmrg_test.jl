@@ -14,8 +14,9 @@ using Random
 
     psi0 = C.random_MPS(N, 2, 8)
     initial_vector = C.dense(psi0)
+    @info "  two-site DMRG sweeps (N=4 Heisenberg):"
     result = C.dmrg(H_custom, psi0; nsweeps=8, maxdim=8,
-                    cutoff=1e-12, tol=1e-10, output=false)
+                    cutoff=1e-12, tol=1e-10, output=true)
     custom_energy, psi = result
 
     @test result isa C.DMRGResult

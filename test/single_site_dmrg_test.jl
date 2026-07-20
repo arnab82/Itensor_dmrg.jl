@@ -14,8 +14,9 @@ using LinearAlgebra
         psi0 = C.random_MPS(N, 2, 2)                    # bonds capped at 2
         @test maximum(C.bond_dimensions(psi0)) == 2
 
+        @info "  single-site DMRG sweeps (N=4 Heisenberg, start bond 2):"
         result = C.single_site_dmrg(H, psi0; nsweeps=40, maxdim=8, cutoff=1e-12,
-                                    tol=1e-10, alpha=alpha, output=false)
+                                    tol=1e-10, alpha=alpha, output=true)
         e, psi = result
         @info "  single-site DMRG grew the bond via subspace expansion" start_bond = 2 final_bond = maximum(C.bond_dimensions(psi)) energy = e exact = exact ΔE = abs(e - exact)
         @test result isa C.DMRGResult

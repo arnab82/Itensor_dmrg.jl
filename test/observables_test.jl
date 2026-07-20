@@ -63,6 +63,7 @@ using LinearAlgebra
 
         @test abs(sum(real, C.expect(gs, Sz))) < 1e-7        # total Sz = 0 sector
         Cm = C.correlation_matrix(gs, Sz, Sz)
+        @info "  Heisenberg GS observables (N=4)" total_Sz = sum(real, C.expect(gs, Sz)) Sz1_Sz2 = real(Cm[1, 2]) Sz1_sq = real(Cm[1, 1])
         @test Cm ≈ Cm' atol=1e-9                             # ⟨SᶻᵢSᶻⱼ⟩ = ⟨SᶻⱼSᶻᵢ⟩
         @test all(abs(Cm[i, i] - 0.25) < 1e-9 for i in 1:4)  # ⟨Sᶻᵢ²⟩ = 1/4
         @test abs(real(sum(Cm))) < 1e-6                      # ⟨(ΣSᶻ)²⟩ = 0
