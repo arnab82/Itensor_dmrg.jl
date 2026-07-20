@@ -1,6 +1,6 @@
 using LinearAlgebra
 
-@testset "Generic nearest-neighbor MPO builder" begin
+@testset verbose = true "Generic nearest-neighbor MPO builder" begin
     C = NaiveDMRG
     Sx = ComplexF64[0 0.5; 0.5 0]
     Sz = ComplexF64[0.5 0; 0 -0.5]
