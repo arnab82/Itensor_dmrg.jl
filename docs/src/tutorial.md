@@ -55,6 +55,21 @@ H = nearest_neighbor_mpo(N, 2;
         bond   = [(-1.0, ops.Sz, ops.Sz)])
 ```
 
+`MPS{T}` and `MPO{T}` are parametric in the scalar type. The Heisenberg and
+Ising models are real, so passing `T=Float64` runs a fully real solve (half the
+memory, no complex arithmetic):
+
+```julia
+H = heisenberg_mpo(20; T=Float64)
+psi0 = random_MPS(20, 2, 16; T=Float64)
+energy, psi = dmrg(H, psi0; nsweeps=20, maxdim=64, cutoff=1e-10, tol=1e-8)
+# eltype(psi) == Float64
+```
+
+Mixing types is fine too: `dmrg` runs on a copy promoted to
+`promote_type(eltype(H), eltype(psi))`, so a real state with a complex
+Hamiltonian composes without any manual conversion.
+
 ## 3. Build a reproducible initial MPS
 
 ```julia

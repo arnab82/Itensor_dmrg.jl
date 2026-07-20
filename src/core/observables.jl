@@ -5,9 +5,11 @@
 # chain and inserting the local operator(s) at the requested site(s). A local
 # operator is any d×d matrix ⟨s'|Ô|s⟩ = O[s', s].
 #
-# Results are returned as `ComplexF64` for type stability and to support
-# non-Hermitian operators (e.g. S⁺, needed by ⟨S⁺ᵢ S⁻ⱼ⟩). For a Hermitian
-# operator the imaginary part is zero up to rounding — take `real(...)`.
+# Results have scalar type `promote_type(eltype(psi), eltype(op))`, so they stay
+# real for a real state and real operator, and become complex when either is
+# (as for a non-Hermitian operator such as S⁺ in ⟨S⁺ᵢ S⁻ⱼ⟩). For a Hermitian
+# operator on a complex state the imaginary part is zero up to rounding — take
+# `real(...)`.
 
 """
     spin_half_operators()
@@ -41,16 +43,18 @@ _check_op(psi::MPS, op::AbstractMatrix) =
         throw(DimensionMismatch("operator must be $(psi.d)×$(psi.d) to match the physical dimension"))
 
 """
-    expect(psi, op, site) -> ComplexF64
+    expect(psi, op, site) -> Number
 
 Normalized single-site expectation value `⟨ψ|Ô_site|ψ⟩ / ⟨ψ|ψ⟩` of the local
-`d×d` operator `op` acting on `site`.
+`d×d` operator `op` acting on `site`. The scalar type is
+`promote_type(eltype(psi), eltype(op))`.
 """
 function expect(psi::MPS, op::AbstractMatrix, site::Integer)
     1 <= site <= psi.N || throw(BoundsError(psi, site))
     _check_op(psi, op)
-    O = Array{ComplexF64}(op)
-    E = ones(ComplexF64, 1, 1)
+    T = promote_type(eltype(psi), eltype(op))
+    O = Array{T}(op)
+    E = ones(T, 1, 1)
     for k in 1:psi.N
         E = _absorb_site(E, psi.tensors[k], k == site ? O : nothing)
     end
@@ -58,14 +62,15 @@ function expect(psi::MPS, op::AbstractMatrix, site::Integer)
 end
 
 """
-    expect(psi, op) -> Vector{ComplexF64}
+    expect(psi, op) -> Vector
 
 The site-resolved profile `[⟨Ô_i⟩ for i in 1:N]` of one local operator.
 """
-expect(psi::MPS, op::AbstractMatrix) = ComplexF64[expect(psi, op, i) for i in 1:psi.N]
+expect(psi::MPS, op::AbstractMatrix) =
+    promote_type(eltype(psi), eltype(op))[expect(psi, op, i) for i in 1:psi.N]
 
 """
-    correlation(psi, op1, op2, i, j) -> ComplexF64
+    correlation(psi, op1, op2, i, j) -> Number
 
 Normalized two-point correlation `⟨ψ|Ô¹_i Ô²_j|ψ⟩ / ⟨ψ|ψ⟩`. Operators on
 distinct sites commute, so the result is independent of whether `i < j` or
@@ -77,10 +82,11 @@ function correlation(psi::MPS, op1::AbstractMatrix, op2::AbstractMatrix,
     1 <= j <= psi.N || throw(BoundsError(psi, j))
     _check_op(psi, op1)
     _check_op(psi, op2)
-    O1 = Array{ComplexF64}(op1)
-    O2 = Array{ComplexF64}(op2)
+    T = promote_type(eltype(psi), eltype(op1), eltype(op2))
+    O1 = Array{T}(op1)
+    O2 = Array{T}(op2)
     Osame = O1 * O2  # on-site product, used only when i == j
-    E = ones(ComplexF64, 1, 1)
+    E = ones(T, 1, 1)
     for k in 1:psi.N
         insert = i == j && k == i ? Osame :
                  k == i           ? O1     :
@@ -91,11 +97,12 @@ function correlation(psi::MPS, op1::AbstractMatrix, op2::AbstractMatrix,
 end
 
 """
-    correlation_matrix(psi, op1, op2) -> Matrix{ComplexF64}
+    correlation_matrix(psi, op1, op2) -> Matrix
 
 The full `N×N` matrix `C[i, j] = ⟨Ô¹_i Ô²_j⟩`.
 """
 function correlation_matrix(psi::MPS, op1::AbstractMatrix, op2::AbstractMatrix)
     N = psi.N
-    return ComplexF64[correlation(psi, op1, op2, i, j) for i in 1:N, j in 1:N]
+    T = promote_type(eltype(psi), eltype(op1), eltype(op2))
+    return T[correlation(psi, op1, op2, i, j) for i in 1:N, j in 1:N]
 end

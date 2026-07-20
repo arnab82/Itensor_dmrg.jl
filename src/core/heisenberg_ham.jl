@@ -1,19 +1,21 @@
 """
-    heisenberg_mpo(N; J=1.0, hz=0.0)
+    heisenberg_mpo(N; J=1.0, hz=0.0, T=ComplexF64)
 
 Open-chain spin-1/2 Hamiltonian
 `J * sum(SxₙSxₙ₊₁ + SyₙSyₙ₊₁ + SzₙSzₙ₊₁) + hz * sum(Szₙ)`.
+The model is real, so `T=Float64` gives a real MPO (and a fully real solve).
 """
-function heisenberg_mpo(N::Integer; J::Real=1.0, hz::Real=0.0)
+function heisenberg_mpo(N::Integer; J::Real=1.0, hz::Real=0.0,
+                        T::Type{<:Number}=ComplexF64)
     N >= 2 || throw(ArgumentError("N must be at least 2"))
-    id = ComplexF64[1 0; 0 1]
-    sp = ComplexF64[0 1; 0 0]
-    sm = adjoint(sp)
-    sz = ComplexF64[0.5 0; 0 -0.5]
+    id = T[1 0; 0 1]
+    sp = T[0 1; 0 0]
+    sm = T[0 0; 1 0]
+    sz = T[0.5 0; 0 -0.5]
     onsite = hz .* sz
 
     # Finite-state MPO: completed term, three open interactions, identity path.
-    bulk = zeros(ComplexF64, 5, 2, 2, 5)
+    bulk = zeros(T, 5, 2, 2, 5)
     bulk[1, :, :, 1] .= id
     bulk[2, :, :, 1] .= sm
     bulk[3, :, :, 1] .= sp
@@ -24,7 +26,7 @@ function heisenberg_mpo(N::Integer; J::Real=1.0, hz::Real=0.0)
     bulk[5, :, :, 4] .= J .* sz
     bulk[5, :, :, 5] .= id
 
-    tensors = Vector{Array{ComplexF64,4}}(undef, N)
+    tensors = Vector{Array{T,4}}(undef, N)
     tensors[1] = copy(bulk[5:5, :, :, :])
     tensors[2:N-1] .= Ref(copy(bulk))
     tensors[N] = copy(bulk[:, :, :, 1:1])

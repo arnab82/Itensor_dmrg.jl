@@ -51,7 +51,7 @@ function expand_split_right!(psi::MPS, H::MPO, cache::EnvironmentCache, i::Integ
         P = reshape(Pfull, l, d, w * r)
         Menl = cat(M, alpha .* P; dims=3)                 # (l, d, r + w*r)
         B = psi.tensors[i + 1]
-        Benl = zeros(ComplexF64, r + w * r, size(B, 2), size(B, 3))
+        Benl = zeros(eltype(M), r + w * r, size(B, 2), size(B, 3))
         Benl[1:r, :, :] .= B
     else
         Menl, Benl = M, psi.tensors[i + 1]
@@ -80,7 +80,7 @@ function expand_split_left!(psi::MPS, H::MPO, cache::EnvironmentCache, i::Intege
         P = reshape(Pfull, wl * l, d, r)
         Menl = cat(M, alpha .* P; dims=1)                 # (l + wl*l, d, r)
         A = psi.tensors[i - 1]
-        Aenl = zeros(ComplexF64, size(A, 1), size(A, 2), l + wl * l)
+        Aenl = zeros(eltype(M), size(A, 1), size(A, 2), l + wl * l)
         Aenl[:, :, 1:l] .= A
     else
         Menl, Aenl = M, psi.tensors[i - 1]
@@ -141,6 +141,10 @@ function single_site_dmrg!(H::MPO, psi::MPS; nsweeps::Integer=20, maxdim=100,
                            alpha=(1e-2, 1e-3, 1e-4, 0.0), output::Bool=true)
     (H.N, H.d) == (psi.N, psi.d) || throw(DimensionMismatch("MPO and MPS are incompatible"))
     nsweeps >= 1 || throw(ArgumentError("nsweeps must be positive"))
+    T = promote_type(eltype(H), eltype(psi))
+    T == eltype(psi) || throw(ArgumentError(
+        "psi has scalar type $(eltype(psi)) but the Hamiltonian requires $T; " *
+        "use the copying `single_site_dmrg`, or convert psi first"))
     right_canonicalize!(psi)
     normalize!(psi)
     previous = compute_energy(H, psi)
@@ -185,5 +189,9 @@ function single_site_dmrg!(H::MPO, psi::MPS; nsweeps::Integer=20, maxdim=100,
     return DMRGResult(energy, psi, false, :maximum_sweeps, history)
 end
 
-"""Run single-site DMRG on a copy of `psi`, leaving the supplied state unchanged."""
-single_site_dmrg(H::MPO, psi::MPS; kwargs...) = single_site_dmrg!(H, copy(psi); kwargs...)
+"""
+Run single-site DMRG on a copy of `psi`, leaving the supplied state unchanged.
+The copy is promoted to `promote_type(eltype(H), eltype(psi))`.
+"""
+single_site_dmrg(H::MPO, psi::MPS; kwargs...) =
+    single_site_dmrg!(H, _promote_mps(psi, promote_type(eltype(H), eltype(psi))); kwargs...)

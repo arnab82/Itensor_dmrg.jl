@@ -22,6 +22,8 @@ Several items originally listed below have since landed:
 - **Entanglement diagnostics** — `schmidt_values`, `entanglement_entropy`.
 - **Single-site DMRG with subspace expansion** — `single_site_dmrg`,
   `single_site_dmrg!`.
+- **Parametric scalar types** — `MPS{T}`/`MPO{T}`, with a fully real `Float64`
+  pipeline and automatic real/complex promotion.
 
 Completed subsections below are marked **(Done.)**. The math for the from-scratch
 solver, its observables, entanglement, and the MPO builder is derived in
@@ -131,12 +133,14 @@ allocate new arrays repeatedly. Introduce reusable buffers keyed by tensor
 shape, use in-place multiplication where practical, and benchmark allocations
 per local solve.
 
-### Parameterize scalar and storage types
+### Parameterize scalar and storage types — **(Scalar type done.)**
 
-Change `MPS`, `MPO`, and environments from hard-coded `ComplexF64` arrays to
-parametric scalar/storage types. This allows real Hamiltonians to use
-`Float64`, supports alternative precision, and creates a path toward GPU or
-block-sparse arrays.
+`MPS{T}` and `MPO{T}` are now parametric in the scalar type `T`, and the
+environments/effective Hamiltonians are formed in
+`promote_type(eltype(H), eltype(psi))`, so a real Hamiltonian and state run a
+fully real `Float64` solve (and mixed real/complex composes via the copying
+`dmrg`). Still open: parameterizing the *storage* type (beyond dense `Array`)
+toward GPU or block-sparse backends.
 
 ### Tune contraction order and eigensolver settings
 
@@ -172,16 +176,15 @@ After the core API and tests stabilize:
 ## Recommended next milestone
 
 With structured results, sweep schedules, incremental environments, the generic
-MPO builder, observables, entanglement diagnostics, and single-site DMRG all in
-place, the next focused steps are:
+MPO builder, observables, entanglement diagnostics, single-site DMRG, and
+parametric scalar types all in place, the next focused steps are:
 
-1. **Parametric scalar/storage types** — generalize `MPS`, `MPO`, and the
-   environments off hard-coded `ComplexF64` so real Hamiltonians run in `Float64`
-   (Priority 2). This is the widest-reaching remaining refactor.
-2. **Remaining construction tools** — a product-state builder and a validated,
+1. **Remaining construction tools** — a product-state builder and a validated,
    sign-correct Hubbard MPO on the native tensor conventions.
-3. **Excited states** — via orthogonality penalties or projected solvers
+2. **Excited states** — via orthogonality penalties or projected solvers
    (Priority 3).
+3. **Parametric storage types** — beyond the scalar type, abstract the array
+   storage toward block-sparse or GPU backends (Priority 2).
 
 Deferred for now: explicit local-eigensolver failure handling, and moving
 `NaiveDMRG.Reference` behind a package extension.
