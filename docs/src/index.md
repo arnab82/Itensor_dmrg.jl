@@ -16,8 +16,13 @@ never calls ITensor.
 - matrix-free two-site effective Hamiltonians and KrylovKit local eigensolves;
 - single-site DMRG with subspace expansion;
 - SVD bond truncation by maximum dimension and discarded weight;
-- an open spin-1/2 Heisenberg MPO plus a generic nearest-neighbor MPO builder
-  (`nearest_neighbor_mpo`, `tfim_mpo`);
+- an open spin-1/2 Heisenberg MPO, a generic nearest-neighbor MPO builder
+  (`nearest_neighbor_mpo`, `tfim_mpo`), and a finite-range MPO compiler with
+  operator strings (`general_mpo`);
+- validated 1D and 2D Fermi-Hubbard models with Jordan-Wigner fermion signs
+  (`hubbard_mpo`, `hubbard_2d_mpo`, `electron_operators`);
+- an optional Abelian-U(1) block-sparse path (`symmetry=true`) that targets a
+  chosen `(N↑, N↓)` or `Sz` charge sector directly;
 - local observables and correlation functions (`expect`, `correlation`,
   `correlation_matrix`);
 - bipartite entanglement entropy and the Schmidt spectrum

@@ -29,6 +29,33 @@ dense
 heisenberg_mpo
 nearest_neighbor_mpo
 tfim_mpo
+general_mpo
+```
+
+## Fermi-Hubbard models
+
+```@docs
+hubbard_mpo
+hubbard_2d_mpo
+electron_operators
+```
+
+## U(1) symmetry (charge sectors)
+
+The optional block-sparse path. Passing `symmetry=true` to a model builder returns
+a [`SymMPO`](@ref); pair it with a [`random_MPS`](@ref) seeded in a target sector
+(or [`random_sym_mps`](@ref)) and call [`dmrg`](@ref), which dispatches to the
+symmetric engine. See the tutorial's charge-sector section.
+
+```@docs
+QN
+SymMPS
+SymMPO
+symmetrize_mpo
+random_sym_mps
+electron_site_qns
+spinhalf_site_qns
+electron_half_filling
 ```
 
 ## Ground-state solvers

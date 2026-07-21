@@ -10,6 +10,14 @@
 # contributes to a tensor's conserved flux, so `QN` supports `+`, `-`, unary `-`,
 # integer scaling, and a `zero`.
 
+"""
+    QN(charges...) -> QN{K}
+
+An Abelian-U(1) quantum number: `K` additive integer charges. Used to label the
+sectors of the block-sparse (`symmetry=true`) tensors — e.g. `QN(nup, ndn)` for
+an electron site and `QN(2sz)` for spin-1/2. Supports `+`, `-`, integer scaling,
+and `zero`.
+"""
 struct QN{K}
     q::NTuple{K,Int}
 end
