@@ -96,3 +96,63 @@ function hubbard_mpo(N::Integer; t::Real=1.0, U::Real=4.0, mu::Real=0.0,
 
     return nearest_neighbor_mpo(N, 4; onsite=onsite, bond=bond, T=T)
 end
+
+# The four fermionic hopping terms across a bond (chain sites p < q), Jordan-
+# Wigner dressed: L̂ at p, string F on the sites between, R̂ at q. Returns the
+# `(coeff, p, opL, q, opR, string)` tuples for `general_mpo`.
+function _hopping_terms(op, t, p::Int, q::Int)
+    return [
+        (-t, p, op.Cdagup * op.F, q, op.Cup,    op.F),   # c†_{p↑} c_{q↑}
+        (-t, p, op.F * op.Cup,    q, op.Cdagup, op.F),   # h.c.
+        (-t, p, op.Cdagdn * op.F, q, op.Cdn,    op.F),   # c†_{p↓} c_{q↓}
+        (-t, p, op.F * op.Cdn,    q, op.Cdagdn, op.F),   # h.c.
+    ]
+end
+
+"""
+    hubbard_2d_mpo(Nx, Ny; t=1.0, U=4.0, mu=0.0, yperiodic=false, T=ComplexF64) -> MPO
+
+Build the MPO for the `Nx × Ny` Fermi-Hubbard lattice, with electron sites
+snake-ordered as `p = i + (j-1)·Nx` (i in 1:Nx, j in 1:Ny) to match the ITensor
+reference. Horizontal bonds are nearest-neighbor in the chain; vertical bonds
+have chain range `Nx` and carry a Jordan-Wigner F-string over the intervening
+sites (handled by [`general_mpo`](@ref)). `yperiodic=true` adds the wrap bonds
+in the y-direction (chain range `(Ny-1)·Nx`).
+
+No quantum-number symmetry (dense d=4): `dmrg` finds the global ground state;
+use `mu = U/2` for the particle-hole-symmetric half-filling point. `Ny = 1`
+reduces to [`hubbard_mpo`](@ref).
+"""
+function hubbard_2d_mpo(Nx::Integer, Ny::Integer; t::Real=1.0, U::Real=4.0,
+                        mu::Real=0.0, yperiodic::Bool=false,
+                        T::Type{<:Number}=ComplexF64)
+    (Nx >= 1 && Ny >= 1 && Nx * Ny >= 2) ||
+        throw(ArgumentError("need Nx,Ny >= 1 and Nx*Ny >= 2"))
+    op = electron_operators(T)
+    site(i, j) = i + (j - 1) * Nx
+
+    onsite = Tuple[]
+    for j in 1:Ny, i in 1:Nx
+        p = site(i, j)
+        push!(onsite, (U, p, op.Nupdn))
+        if mu != 0
+            push!(onsite, (-mu, p, op.Nup))
+            push!(onsite, (-mu, p, op.Ndn))
+        end
+    end
+
+    twosite = Tuple[]
+    for j in 1:Ny, i in 1:Nx
+        if i < Nx                                   # horizontal, range 1
+            append!(twosite, _hopping_terms(op, t, site(i, j), site(i + 1, j)))
+        end
+        if j < Ny                                   # vertical, range Nx
+            append!(twosite, _hopping_terms(op, t, site(i, j), site(i, j + 1)))
+        end
+        if yperiodic && Ny > 2 && j == 1            # y-wrap, range (Ny-1)·Nx
+            append!(twosite, _hopping_terms(op, t, site(i, 1), site(i, Ny)))
+        end
+    end
+
+    return general_mpo(Nx * Ny, 4; onsite=onsite, twosite=twosite, T=T)
+end
