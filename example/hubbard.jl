@@ -6,13 +6,11 @@
 # half filling is the global minimum — so these runs return half-filling
 # ground states directly.
 #
-# NOTE ON SIZE: this is a DENSE d=4 DMRG with no U(1)/Sz block-sparsity. Beyond
-# the two independent limits (no symmetry blocking; exponential dense fallback),
-# the naive hot loop currently allocates heavily at d=4 — a ~6-site solve churns
-# tens of GB of temporaries — so it is only practical for small systems today.
-# The demos below are deliberately tiny so they run in a few seconds; a
-# symmetric, buffer-reusing solver (e.g. ITensor) is the right tool at scale.
-# See docs/src/roadmap.md for the planned fixes.
+# NOTE ON SIZE: this is a DENSE d=4 DMRG with no U(1)/Sz block-sparsity, so it
+# stays less efficient than a symmetric solver (e.g. ITensor) at large sizes.
+# It is, however, practical for moderate systems: with the optimized contraction
+# order in the core, ~10-site chains converge in seconds. The demos below run in
+# well under a minute.
 #
 # Run:  julia --project=. example/hubbard.jl
 
@@ -26,13 +24,13 @@ rng = MersenneTwister(1234)
 # 1D Hubbard chain: H = -t Σ_σ (c†_iσ c_{i+1,σ} + h.c.) + U Σ n↑n↓ - μ Σ n
 # ---------------------------------------------------------------------------
 let
-    N, t, U = 6, 1.0, 8.0
+    N, t, U = 10, 1.0, 8.0
     mu = U / 2                                   # half filling (p-h symmetric)
     H = hubbard_mpo(N; t=t, U=U, mu=mu, T=Float64)
     psi0 = random_MPS(N, 4, 16; T=Float64, rng=rng)
 
-    energy, psi = dmrg(H, psi0; nsweeps=12,
-                       maxdim=[16, 24, 32],
+    energy, psi = dmrg(H, psi0; nsweeps=16,
+                       maxdim=[16, 32, 64, 96],
                        cutoff=1e-10, tol=1e-8)
 
     # occupations should be ~1 electron/site at half filling
@@ -53,14 +51,14 @@ end
 # (chain range Nx) carry Jordan-Wigner strings, compiled by general_mpo.
 # ---------------------------------------------------------------------------
 let
-    Nx, Ny, t, U = 2, 2, 1.0, 8.0
+    Nx, Ny, t, U = 2, 3, 1.0, 8.0
     N = Nx * Ny
     mu = U / 2
     H = hubbard_2d_mpo(Nx, Ny; t=t, U=U, mu=mu, T=Float64)
     psi0 = random_MPS(N, 4, 16; T=Float64, rng=rng)
 
-    energy, psi = dmrg(H, psi0; nsweeps=12,
-                       maxdim=[16, 32, 48],
+    energy, psi = dmrg(H, psi0; nsweeps=16,
+                       maxdim=[16, 32, 64, 96],
                        cutoff=1e-10, tol=1e-8)
 
     ops = electron_operators(Float64)

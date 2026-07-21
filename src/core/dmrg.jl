@@ -51,7 +51,7 @@ function EnvironmentCache(N::Integer, ::Type{T}=ComplexF64) where {T}
 end
 
 function absorb_left(L, A, W)
-    @tensor next_L[rb, b, rk] := conj(A[lb, so, rb]) * L[lb, a, lk] *
+    @tensoropt next_L[rb, b, rk] := conj(A[lb, so, rb]) * L[lb, a, lk] *
                                   W[a, so, si, b] * A[lk, si, rk]
     return next_L
 end
@@ -60,13 +60,13 @@ function absorb_left!(out, L, A, W)
     expected = (size(A, 3), size(W, 4), size(A, 3))
     size(out) == expected || throw(DimensionMismatch("left environment buffer has the wrong shape"))
     fill!(out, zero(eltype(out)))
-    @tensor out[rb, b, rk] = conj(A[lb, so, rb]) * L[lb, a, lk] *
+    @tensoropt out[rb, b, rk] = conj(A[lb, so, rb]) * L[lb, a, lk] *
                              W[a, so, si, b] * A[lk, si, rk]
     return out
 end
 
 function absorb_right(R, A, W)
-    @tensor next_R[lb, a, lk] := conj(A[lb, so, rb]) * W[a, so, si, b] *
+    @tensoropt next_R[lb, a, lk] := conj(A[lb, so, rb]) * W[a, so, si, b] *
                                   A[lk, si, rk] * R[rb, b, rk]
     return next_R
 end
@@ -75,7 +75,7 @@ function absorb_right!(out, R, A, W)
     expected = (size(A, 1), size(W, 1), size(A, 1))
     size(out) == expected || throw(DimensionMismatch("right environment buffer has the wrong shape"))
     fill!(out, zero(eltype(out)))
-    @tensor out[lb, a, lk] = conj(A[lb, so, rb]) * W[a, so, si, b] *
+    @tensoropt out[lb, a, lk] = conj(A[lb, so, rb]) * W[a, so, si, b] *
                              A[lk, si, rk] * R[rb, b, rk]
     return out
 end
@@ -127,7 +127,7 @@ end
 """Matrix-free action of the two-site effective Hamiltonian."""
 function effective_action(x, L, W1, W2, R, shape)
     X = reshape(x, shape)
-    @tensor Y[lb, so1, so2, rb] := L[lb, a, lk] * W1[a, so1, si1, m] *
+    @tensoropt Y[lb, so1, so2, rb] := L[lb, a, lk] * W1[a, so1, si1, m] *
                                       W2[m, so2, si2, b] * R[rb, b, rk] *
                                       X[lk, si1, si2, rk]
     return vec(Y)
@@ -138,7 +138,7 @@ function effective_action!(y, x, L, W1, W2, R, shape)
     X = reshape(x, shape)
     Y = reshape(y, shape)
     fill!(Y, zero(eltype(Y)))
-    @tensor Y[lb, so1, so2, rb] = L[lb, a, lk] * W1[a, so1, si1, m] *
+    @tensoropt Y[lb, so1, so2, rb] = L[lb, a, lk] * W1[a, so1, si1, m] *
                                   W2[m, so2, si2, b] * R[rb, b, rk] *
                                   X[lk, si1, si2, rk]
     return y
@@ -234,7 +234,7 @@ function overlap_with_operator(bra::MPS, H::MPO, ket::MPS)
     env = ones(promote_type(eltype(bra), eltype(H), eltype(ket)), 1, 1, 1)
     for i in 1:H.N
         A, W, B = bra.tensors[i], H.tensors[i], ket.tensors[i]
-        @tensor next_env[ra, b, rk] := conj(A[la, so, ra]) * env[la, a, lk] *
+        @tensoropt next_env[ra, b, rk] := conj(A[la, so, ra]) * env[la, a, lk] *
                                        W[a, so, si, b] * B[lk, si, rk]
         env = next_env
     end
