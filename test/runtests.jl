@@ -36,6 +36,9 @@ import NaiveDMRG
     @info "Symmetric MPS/MPO builders (symmetry=true, Stage 2)"
     include("sym_builders_test.jl")
 
+    @info "Symmetric block-sparse DMRG (symmetry=true, Stage 3)"
+    include("sym_dmrg_test.jl")
+
     @info "Local observables and correlations"
     include("observables_test.jl")
 

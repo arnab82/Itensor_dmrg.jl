@@ -5,10 +5,13 @@
 # know about symmetry. A `SymMPS` is a random state pinned to one charge sector.
 #
 # Arrow / flux conventions (all tensors carry flux 0; the state's total charge
-# lives on the right boundary bond):
-#   ket MPS  A[l, s, r]           arrows (l:-1, s:-1, r:+1),  q_r = q_l + q_s
-#   MPO      W[l, s', s, r]        arrows (l:-1, s':-1, s:+1, r:+1)
-# so the ket physical leg (-1) is dual to the MPO physical-in leg (+1), and
+# lives on the right boundary bond). Bonds "point left" — a tensor's LEFT bond is
+# outgoing (+1) and its RIGHT bond incoming (-1) — so that the left factor of a
+# block-sparse QR/SVD (which appends an incoming bond) drops straight into place
+# as a canonicalized MPS tensor:
+#   ket MPS  A[l, s, r]           arrows (l:+1, s:+1, r:-1),  q_r = q_l + q_s
+#   MPO      W[l, s', s, r]        arrows (l:+1, s':+1, s:-1, r:-1)
+# so the ket physical leg (+1) is dual to the MPO physical-in leg (-1), and
 # neighbouring bonds are duals. These are enforced automatically: `SymTensor`
 # rejects any tensor whose weight lands outside the flux-0 blocks.
 
@@ -143,10 +146,10 @@ function symmetrize_mpo(H::MPO{T}, sites::Vector{Vector{QN{K}}}; atol::Real=1e-1
     tensors = Vector{SymTensor{T,4,K}}(undef, N)
     for n in 1:N
         W = H.tensors[n]
-        leftidx, pl = _index_from_labels(-1, bondphi[n])
-        rightidx, pr = _index_from_labels(+1, bondphi[n + 1])
-        outidx, pp = _index_from_labels(-1, sites[n])          # physical-out (bra)
-        inidx = SymIndex(+1, copy(outidx.sectors), copy(outidx.sizes))  # physical-in (ket)
+        leftidx, pl = _index_from_labels(+1, bondphi[n])
+        rightidx, pr = _index_from_labels(-1, bondphi[n + 1])
+        outidx, pp = _index_from_labels(+1, sites[n])          # physical-out (bra)
+        inidx = SymIndex(-1, copy(outidx.sectors), copy(outidx.sizes))  # physical-in (ket)
         Wp = W[pl, pp, pp, pr]
         tensors[n] = SymTensor(Wp, (leftidx, outidx, inidx, rightidx), zero(QN{K}); atol=atol)
     end
@@ -158,7 +161,7 @@ function dense(H::SymMPO{T,K}) where {T,K}
     tensors = Vector{Array{T,4}}(undef, H.N)
     for n in 1:H.N
         Wd = dense(H.tensors[n])
-        _, pp = _index_from_labels(-1, H.sites[n])
+        _, pp = _index_from_labels(+1, H.sites[n])
         inv = invperm(pp)
         tensors[n] = Wd[:, inv, inv, :]                        # bonds stay sorted (consistent)
     end
@@ -204,9 +207,9 @@ function random_sym_mps(sites::Vector{Vector{QN{K}}}, sector::QN{K}, maxdim::Int
     bondindex(b, arrow) = SymIndex(arrow, copy(keepq[b]), [dims[b][q] for q in keepq[b]])
     tensors = Vector{SymTensor{T,3,K}}(undef, N)
     for n in 1:N
-        leftidx = bondindex(n, -1)
-        rightidx = bondindex(n + 1, +1)
-        physidx, _ = _index_from_labels(-1, sites[n])
+        leftidx = bondindex(n, +1)
+        rightidx = bondindex(n + 1, -1)
+        physidx, _ = _index_from_labels(+1, sites[n])
         legs = (leftidx, physidx, rightidx)
         blocks = Dict{NTuple{3,Int},Array{T,3}}()
         for key in _allowed_keys(legs, zero(QN{K}))
@@ -223,7 +226,7 @@ function dense(psi::SymMPS{T,K}) where {T,K}
     tensors = Vector{Array{T,3}}(undef, psi.N)
     for n in 1:psi.N
         Ad = dense(psi.tensors[n])
-        _, pp = _index_from_labels(-1, psi.sites[n])
+        _, pp = _index_from_labels(+1, psi.sites[n])
         tensors[n] = Ad[:, invperm(pp), :]
     end
     return MPS(tensors)

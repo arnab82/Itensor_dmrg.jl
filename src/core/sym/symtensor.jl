@@ -149,6 +149,22 @@ end
 
 LinearAlgebra.norm(A::SymTensor) = sqrt(sum(b -> sum(abs2, b), values(A.blocks); init=0.0))
 
+"""Conjugate tensor with all arrows flipped and flux negated — the bra `⟨A|`."""
+function symconj(A::SymTensor{T,R,K}) where {T,R,K}
+    legs = ntuple(l -> dual(A.legs[l]), R)
+    blocks = Dict{NTuple{R,Int},Array{T,R}}(k => conj.(v) for (k, v) in A.blocks)
+    return SymTensor{T,R,K}(legs, -A.flux, blocks)
+end
+
+"""Reorder the legs of `A` by permutation `perm`."""
+function permutesym(A::SymTensor{T,R,K}, perm) where {T,R,K}
+    p = Tuple(perm)
+    newlegs = ntuple(i -> A.legs[p[i]], R)
+    blocks = Dict{NTuple{R,Int},Array{T,R}}(
+        ntuple(i -> key[p[i]], R) => permutedims(blk, p) for (key, blk) in A.blocks)
+    return SymTensor{T,R,K}(newlegs, A.flux, blocks)
+end
+
 function Base.:*(alpha::Number, A::SymTensor{T,R,K}) where {T,R,K}
     S = promote_type(typeof(alpha), T)
     blocks = Dict{NTuple{R,Int},Array{S,R}}(k => S(alpha) .* v for (k, v) in A.blocks)
