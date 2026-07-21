@@ -33,13 +33,14 @@ include("core/MPS.jl")
 include("core/MPO.jl")
 include("core/heisenberg_ham.jl")
 include("core/mpo_builder.jl")
+include("core/hubbard_mpo.jl")
 include("core/dmrg.jl")
 include("core/single_site_dmrg.jl")
 include("core/observables.jl")
 include("core/entanglement.jl")
 
 export MPS, MPO, random_MPS, heisenberg_mpo, heisenberg_ham
-export nearest_neighbor_mpo, tfim_mpo
+export nearest_neighbor_mpo, tfim_mpo, hubbard_mpo, electron_operators
 export dmrg, dmrg!, single_site_dmrg, single_site_dmrg!
 export compute_energy, overlap, dense, bond_dimensions
 export DMRGResult, SweepRecord, LocalSolveRecord

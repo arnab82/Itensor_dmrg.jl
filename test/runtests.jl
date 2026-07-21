@@ -27,6 +27,9 @@ import NaiveDMRG
     @info "Generic nearest-neighbor MPO builder"
     include("mpo_builder_test.jl")
 
+    @info "1D Fermi-Hubbard chain (d=4) vs ITensor Electron reference"
+    include("hubbard_test.jl")
+
     @info "Local observables and correlations"
     include("observables_test.jl")
 
