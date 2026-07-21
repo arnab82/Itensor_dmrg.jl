@@ -39,6 +39,7 @@ include("core/dmrg.jl")
 # --- Optional Abelian-U(1) block-sparse ("symmetry=true") path -------------
 include("core/sym/qn.jl")
 include("core/sym/symtensor.jl")
+include("core/sym/sym_mps_mpo.jl")
 include("core/single_site_dmrg.jl")
 include("core/observables.jl")
 include("core/entanglement.jl")

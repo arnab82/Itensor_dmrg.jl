@@ -6,7 +6,7 @@ Open-chain spin-1/2 Hamiltonian
 The model is real, so `T=Float64` gives a real MPO (and a fully real solve).
 """
 function heisenberg_mpo(N::Integer; J::Real=1.0, hz::Real=0.0,
-                        T::Type{<:Number}=ComplexF64)
+                        T::Type{<:Number}=ComplexF64, symmetry::Bool=false)
     N >= 2 || throw(ArgumentError("N must be at least 2"))
     id = T[1 0; 0 1]
     sp = T[0 1; 0 0]
@@ -30,7 +30,8 @@ function heisenberg_mpo(N::Integer; J::Real=1.0, hz::Real=0.0,
     tensors[1] = copy(bulk[5:5, :, :, :])
     tensors[2:N-1] .= Ref(copy(bulk))
     tensors[N] = copy(bulk[:, :, :, 1:1])
-    return MPO(tensors)
+    H = MPO(tensors)
+    return symmetry ? symmetrize_mpo(H, [spinhalf_site_qns() for _ in 1:N]) : H
 end
 
 # Compatibility with the former API; its MPO bond dimension is necessarily five.

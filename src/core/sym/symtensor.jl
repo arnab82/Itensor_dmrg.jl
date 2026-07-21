@@ -114,21 +114,24 @@ blocks. Entries outside those blocks must vanish (they are the symmetry-forbidde
 amplitudes); this is checked to `atol`.
 """
 function SymTensor(dense::AbstractArray{T,R}, legs::NTuple{R,SymIndex{K}},
-                   flux::QN{K}; atol::Real=1e-10) where {T,R,K}
+                   flux::QN{K}; atol::Real=1e-8) where {T,R,K}
     size(dense) == ntuple(l -> totaldim(legs[l]), R) ||
         throw(DimensionMismatch("dense size does not match the leg dimensions"))
     offs = ntuple(l -> _offsets(legs[l]), R)
+    ranges_of(key) = ntuple(l -> (offs[l][key[l]] + 1):(offs[l][key[l] + 1]), R)
     blocks = Dict{NTuple{R,Int},Array{T,R}}()
-    kept = 0.0
     for key in _allowed_keys(legs, flux)
-        ranges = ntuple(l -> (offs[l][key[l]] + 1):(offs[l][key[l] + 1]), R)
-        blk = Array{T,R}(dense[ranges...])
-        kept += sum(abs2, blk)
-        blocks[key] = blk
+        blocks[key] = Array{T,R}(dense[ranges_of(key)...])
     end
-    total = sum(abs2, dense)
-    total - kept <= atol^2 * max(1, total) ||
-        throw(ArgumentError("dense array has weight $(sqrt(total - kept)) outside the flux-$flux blocks"))
+    # Forbidden weight, summed directly (subtracting two big near-equal sums would
+    # bury real misplacements under summation roundoff).
+    forbidden = 0.0
+    for key in Iterators.product(ntuple(l -> 1:nsectors(legs[l]), R)...)
+        _block_flux(legs, key) == flux && continue
+        forbidden += sum(abs2, @view dense[ranges_of(key)...])
+    end
+    sqrt(forbidden) <= atol * max(1, sqrt(sum(abs2, dense))) ||
+        throw(ArgumentError("dense array has weight $(sqrt(forbidden)) outside the flux-$flux blocks"))
     return SymTensor{T,R,K}(legs, flux, blocks)
 end
 

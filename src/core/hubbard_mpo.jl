@@ -77,7 +77,7 @@ ground state over all fillings; use `mu = U/2` to place half filling at the
 global minimum. The model is real — pass `T=Float64` for a fully real solve.
 """
 function hubbard_mpo(N::Integer; t::Real=1.0, U::Real=4.0, mu::Real=0.0,
-                     T::Type{<:Number}=ComplexF64)
+                     T::Type{<:Number}=ComplexF64, symmetry::Bool=false)
     N >= 2 || throw(ArgumentError("N must be at least 2"))
     op = electron_operators(T)
 
@@ -94,7 +94,8 @@ function hubbard_mpo(N::Integer; t::Real=1.0, U::Real=4.0, mu::Real=0.0,
         (-t, op.F * op.Cdn,   op.Cdagdn),   # h.c.
     ]
 
-    return nearest_neighbor_mpo(N, 4; onsite=onsite, bond=bond, T=T)
+    H = nearest_neighbor_mpo(N, 4; onsite=onsite, bond=bond, T=T)
+    return symmetry ? symmetrize_mpo(H, [electron_site_qns() for _ in 1:N]) : H
 end
 
 # The four fermionic hopping terms across a bond (chain sites p < q), Jordan-
@@ -125,7 +126,7 @@ reduces to [`hubbard_mpo`](@ref).
 """
 function hubbard_2d_mpo(Nx::Integer, Ny::Integer; t::Real=1.0, U::Real=4.0,
                         mu::Real=0.0, yperiodic::Bool=false,
-                        T::Type{<:Number}=ComplexF64)
+                        T::Type{<:Number}=ComplexF64, symmetry::Bool=false)
     (Nx >= 1 && Ny >= 1 && Nx * Ny >= 2) ||
         throw(ArgumentError("need Nx,Ny >= 1 and Nx*Ny >= 2"))
     op = electron_operators(T)
@@ -154,5 +155,6 @@ function hubbard_2d_mpo(Nx::Integer, Ny::Integer; t::Real=1.0, U::Real=4.0,
         end
     end
 
-    return general_mpo(Nx * Ny, 4; onsite=onsite, twosite=twosite, T=T)
+    H = general_mpo(Nx * Ny, 4; onsite=onsite, twosite=twosite, T=T)
+    return symmetry ? symmetrize_mpo(H, [electron_site_qns() for _ in 1:Nx * Ny]) : H
 end
