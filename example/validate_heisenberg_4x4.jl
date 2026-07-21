@@ -57,18 +57,20 @@ println("\nStarting DMRG calculation...")
 println("-"^60)
 
 try
-    energy, ψ = dmrg(H, ψ, sweeps)
-    
+    # Use a distinct name for the result: assigning `ψ` inside this top-level
+    # `try` would make it local to the block, shadowing the `ψ` on the RHS.
+    energy, ψ_gs = dmrg(H, ψ, sweeps)
+
     println("-"^60)
     println("\n✓ DMRG completed successfully!")
     println("Ground state energy = $energy")
-    
+
     # Calculate magnetization
-    Sz_total = sum(expect(ψ, "Sz"))
+    Sz_total = sum(expect(ψ_gs, "Sz"))
     println("Total Sz = $Sz_total")
-    
+
     # Check bond dimensions
-    max_bond_dim = maximum([dim(linkind(ψ, b)) for b in 1:(N-1)])
+    max_bond_dim = maximum([dim(linkind(ψ_gs, b)) for b in 1:(N-1)])
     println("Maximum bond dimension reached: $max_bond_dim")
     
     println("\n" * "="^60)
