@@ -67,4 +67,3 @@ println("bond dimensions = ", bond_dimensions(psi))
   subspace expansion, observables, and entanglement.
 - The [Implementation](implementation.md) notes tie the algorithm to the code.
 - The [API reference](api.md) lists the exported functions and types.
-- The [Roadmap](roadmap.md) tracks what is done and what is next.

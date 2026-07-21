@@ -17,7 +17,6 @@ makedocs(
         "Theory" => "theory.md",
         "Implementation" => "implementation.md",
         "API reference" => "api.md",
-        "Roadmap" => "roadmap.md",
     ],
     # A first, resilient deploy: don't fail the build on undocumented exports or
     # docstring @ref links that don't resolve to a page.

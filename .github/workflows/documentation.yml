@@ -7,6 +7,14 @@ on:
     tags: ['*']
   pull_request:
 
+# Serialize documentation deploys: overlapping runs (e.g. two merges landing
+# close together) otherwise both push the gh-pages branch and one is rejected
+# with "cannot lock ref 'refs/heads/gh-pages'". Queue rather than cancel so each
+# deploy finishes its push.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 # Allow deploydocs to push to the gh-pages branch using the built-in token.
 permissions:
   contents: write
