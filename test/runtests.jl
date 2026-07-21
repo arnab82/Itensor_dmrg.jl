@@ -30,6 +30,15 @@ import NaiveDMRG
     @info "1D Fermi-Hubbard chain (d=4) vs ITensor Electron reference"
     include("hubbard_test.jl")
 
+    @info "Block-sparse tensor core (symmetry=true, Stage 1)"
+    include("sym_tensor_test.jl")
+
+    @info "Symmetric MPS/MPO builders (symmetry=true, Stage 2)"
+    include("sym_builders_test.jl")
+
+    @info "Symmetric block-sparse DMRG (symmetry=true, Stage 3)"
+    include("sym_dmrg_test.jl")
+
     @info "Local observables and correlations"
     include("observables_test.jl")
 

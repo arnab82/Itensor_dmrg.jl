@@ -36,6 +36,11 @@ include("core/mpo_builder.jl")
 include("core/general_mpo.jl")
 include("core/hubbard_mpo.jl")
 include("core/dmrg.jl")
+# --- Optional Abelian-U(1) block-sparse ("symmetry=true") path -------------
+include("core/sym/qn.jl")
+include("core/sym/symtensor.jl")
+include("core/sym/sym_mps_mpo.jl")
+include("core/sym/sym_dmrg.jl")
 include("core/single_site_dmrg.jl")
 include("core/observables.jl")
 include("core/entanglement.jl")
@@ -43,6 +48,9 @@ include("core/entanglement.jl")
 export MPS, MPO, random_MPS, heisenberg_mpo, heisenberg_ham
 export nearest_neighbor_mpo, tfim_mpo, general_mpo
 export hubbard_mpo, hubbard_2d_mpo, electron_operators
+# Optional Abelian-U(1) block-sparse ("symmetry=true") path
+export QN, SymMPS, SymMPO, symmetrize_mpo, random_sym_mps
+export electron_site_qns, spinhalf_site_qns, electron_half_filling
 export dmrg, dmrg!, single_site_dmrg, single_site_dmrg!
 export compute_energy, overlap, dense, bond_dimensions
 export DMRGResult, SweepRecord, LocalSolveRecord
