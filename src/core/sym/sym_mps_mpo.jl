@@ -244,3 +244,12 @@ function random_MPS(H::SymMPO, maxdim::Integer; sector::QN,
                     rng=Random.default_rng(), T::Type{<:Number}=eltype(H), perbond::Integer=1)
     return random_sym_mps(H.sites, sector, maxdim; T=T, rng=rng, perbond=perbond)
 end
+
+# ---------------------------------------------------------------------------
+# Observables (measured on the dense state — fine for measurement-sized systems)
+# ---------------------------------------------------------------------------
+
+expect(psi::SymMPS, op::AbstractMatrix, site::Integer) = expect(dense(psi), op, site)
+expect(psi::SymMPS, op::AbstractMatrix) = expect(dense(psi), op)
+correlation(psi::SymMPS, op1::AbstractMatrix, op2::AbstractMatrix, i::Integer, j::Integer) =
+    correlation(dense(psi), op1, op2, i, j)

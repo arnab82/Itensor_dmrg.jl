@@ -28,6 +28,8 @@ The implementation currently supports:
   `correlation`, `correlation_matrix`);
 - bipartite entanglement entropy and the Schmidt spectrum
   (`entanglement_entropy`, `schmidt_values`);
+- an optional Abelian-U(1) block-sparse path (`symmetry=true`) that targets a
+  chosen `(N↑, N↓)` or `Sz` charge sector (see below);
 - comparison with exact diagonalization and ITensor on small systems.
 
 ## Installation
@@ -83,6 +85,39 @@ H = heisenberg_mpo(20; T=Float64)
 psi0 = random_MPS(20, 2, 16; T=Float64)
 energy, psi = dmrg(H, psi0; nsweeps=20, maxdim=64)   # eltype(psi) == Float64
 ```
+
+## U(1) symmetry: targeting a charge sector
+
+By default the solver carries no quantum-number symmetry, so `dmrg` finds the
+**global** ground state over all fillings (for Hubbard this is why half filling
+is reached via the particle-hole point `mu = U/2`). Passing `symmetry=true` to a
+model builder instead produces an Abelian-U(1) **block-sparse** operator, and a
+matching `random_MPS` is pinned to a chosen charge sector — so DMRG can target a
+**specific** `(N↑, N↓)` (Hubbard) or `Sz` (spin-1/2) sector directly:
+
+```julia
+N = 8
+H = hubbard_mpo(N; U=8.0, mu=0.0, T=Float64, symmetry=true)   # SymMPO
+
+# ground state at exactly 3 up + 3 down electrons (two holes off half filling)
+psi0 = random_MPS(H, 16; sector=QN(3, 3), T=Float64)
+energy, psi = dmrg(H, psi0; nsweeps=20, maxdim=64)
+
+ops = electron_operators(Float64)
+sum(real(expect(psi, ops.Nup, i)) for i in 1:N)   # == 3.0, exactly
+```
+
+Conserved charges are `(N↑, N↓)` for the electron site and `2·Sz` for spin-1/2;
+`electron_half_filling(N)` is a convenience for the `(N/2, N/2)` sector. See
+`example/hubbard_symmetry.jl`.
+
+The symmetric path is **correct** (energies match exact diagonalization and the
+dense solver to ~1e-13) and its unique capability is fixing the charge sector.
+It is **not** currently a speedup: for these small `d = 4` chains the charge
+blocks are tiny, so per-block overhead makes it somewhat slower and only modestly
+lighter on memory than the tuned dense path. Block-sparsity pays off on wall time
+only at large per-sector bond dimension (wide 2D), which this from-scratch code
+is not tuned for.
 
 ## Tensor conventions
 
