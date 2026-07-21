@@ -64,9 +64,9 @@ status to the caller.
 
 The old single-site and custom-Hubbard example/test executables have been
 removed, and the ITensor code now lives in the isolated `NaiveDMRG.Reference`
-submodule. What remains is to port genuinely useful reference features (for
-example a validated Hubbard MPO) onto the new `(left, physical, right)` tensor
-conventions instead of leaving them ITensor-only.
+submodule. The validated Hubbard MPO has since been ported onto the native
+`(left, physical, right)` conventions (`hubbard_mpo`, `hubbard_2d_mpo`), with the
+Jordan-Wigner signs checked against the ITensor Electron reference.
 
 ## Priority 1: stable user API
 
@@ -100,14 +100,16 @@ maximum.
 Supported builders now cover:
 
 - generic nearest-neighbor MPOs — `nearest_neighbor_mpo`, `tfim_mpo` **(Done)**;
+- finite-range MPOs with operator strings (Jordan-Wigner) — `general_mpo`
+  **(Done)**;
+- validated 1D and 2D Fermi-Hubbard — `hubbard_mpo`, `hubbard_2d_mpo`,
+  `electron_operators`, with fermion signs checked against ITensor **(Done)**;
 - local expectation values and correlation functions — `expect`, `correlation`
   **(Done)**.
 
 Still open:
 
-- a product-MPS / product-state builder;
-- longer-range and finite-state-machine MPOs beyond nearest neighbor;
-- the Hubbard model after fermionic sign conventions are verified.
+- a product-MPS / product-state builder.
 
 ### Make ITensor an optional dependency
 
@@ -139,8 +141,8 @@ per local solve.
 environments/effective Hamiltonians are formed in
 `promote_type(eltype(H), eltype(psi))`, so a real Hamiltonian and state run a
 fully real `Float64` solve (and mixed real/complex composes via the copying
-`dmrg`). Still open: parameterizing the *storage* type (beyond dense `Array`)
-toward GPU or block-sparse backends.
+`dmrg`). An optional U(1) block-sparse storage backend now exists via
+`symmetry=true` (see Priority 3). Still open: a GPU array backend.
 
 ### Tune contraction order and eigensolver settings
 
@@ -164,7 +166,9 @@ Performance comparisons should verify equal energies and tolerances first.
 
 After the core API and tests stabilize:
 
-- quantum-number-conserving block-sparse tensors;
+- quantum-number-conserving block-sparse tensors **(Done — Abelian U(1) via
+  `symmetry=true`; targets a chosen `(N↑, N↓)`/`Sz` sector. Correct but not yet a
+  speedup at `d = 4` sizes, where charge blocks are small)**;
 - single-site DMRG with subspace expansion **(Done — `single_site_dmrg`)**;
 - excited states through orthogonality penalties or projected solvers;
 - finite-state/MPO builders for long-range interactions;
@@ -179,12 +183,13 @@ With structured results, sweep schedules, incremental environments, the generic
 MPO builder, observables, entanglement diagnostics, single-site DMRG, and
 parametric scalar types all in place, the next focused steps are:
 
-1. **Remaining construction tools** — a product-state builder and a validated,
-   sign-correct Hubbard MPO on the native tensor conventions.
+1. **Remaining construction tools** — a product-state builder (the validated,
+   sign-correct Hubbard MPO and the long-range string compiler have landed).
 2. **Excited states** — via orthogonality penalties or projected solvers
    (Priority 3).
-3. **Parametric storage types** — beyond the scalar type, abstract the array
-   storage toward block-sparse or GPU backends (Priority 2).
+3. **Faster block-sparse contraction** — the U(1) backend is correct but its
+   per-block overhead makes it slower than dense at `d = 4`; a cached
+   contraction plan and a GPU array backend remain (Priority 2).
 
 Deferred for now: explicit local-eigensolver failure handling, and moving
 `NaiveDMRG.Reference` behind a package extension.

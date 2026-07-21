@@ -292,6 +292,55 @@ A product state has `S = 0` everywhere; an open critical chain shows the
 familiar entropy peak in the middle. If the central entropy is close to
 `log(maxdim)`, the bond dimension is saturating and should be increased.
 
+## 11. Fermi-Hubbard and charge-sector targeting
+
+The solver also ships validated 1D and 2D Fermi-Hubbard models on the electron
+site (`d = 4`, basis `|0⟩, |↑⟩, |↓⟩, |↑↓⟩`), with the Jordan-Wigner fermion signs
+checked against ITensor:
+
+```math
+H = -t \sum_{\langle i,j\rangle,\sigma}
+        (c^\dagger_{i\sigma} c_{j\sigma} + \text{h.c.})
+    + U \sum_i n_{i\uparrow} n_{i\downarrow}
+    - \mu \sum_i (n_{i\uparrow} + n_{i\downarrow}).
+```
+
+```julia
+H = hubbard_mpo(8; t=1.0, U=8.0, mu=4.0, T=Float64)   # 1D chain
+# H = hubbard_2d_mpo(2, 3; t=1.0, U=8.0, mu=4.0)      # 2D lattice (JW strings)
+energy, psi = dmrg(H, random_MPS(8, 4, 16; T=Float64); nsweeps=16, maxdim=64)
+```
+
+The default solver carries no particle-number symmetry, so `dmrg` finds the
+**global** ground state over all fillings — which is why the half-filled chain is
+reached at the particle-hole point `mu = U/2`.
+
+To instead target a **specific** charge sector, pass `symmetry=true`. The builder
+then returns a block-sparse [`SymMPO`](@ref), and `random_MPS(H; sector=...)`
+pins the initial state to a chosen `(N↑, N↓)`:
+
+```julia
+N = 8
+H = hubbard_mpo(N; U=8.0, mu=0.0, T=Float64, symmetry=true)
+
+# ground state at exactly 3 up + 3 down electrons (two holes off half filling)
+psi0 = random_MPS(H, 16; sector=QN(3, 3), T=Float64)
+energy, psi = dmrg(H, psi0; nsweeps=20, maxdim=64, cutoff=1e-11, tol=1e-10)
+
+ops = electron_operators(Float64)
+nup = sum(real(expect(psi, ops.Nup, i)) for i in 1:N)   # == 3.0, exactly
+```
+
+Conserved charges are `(N↑, N↓)` for the electron site and `2·Sz` for spin-1/2
+(`heisenberg_mpo(N; symmetry=true)`); `electron_half_filling(N)` is a shortcut for
+the `(N/2, N/2)` sector. Since particle number is fixed by the sector, the
+chemical potential is only a constant shift, so `mu = 0` suffices — no
+particle-hole trick needed. The block-sparse path is verified to match exact
+diagonalization to ~1e-13; its purpose is fixing the charge sector (and reading
+off exact quantum numbers), not speed — at these `d = 4` sizes it is somewhat
+slower than the dense path. A full runnable version is in
+`example/hubbard_symmetry.jl`.
+
 ## Practical convergence checklist
 
 Before trusting a result:

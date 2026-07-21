@@ -132,14 +132,37 @@ Run it through the package test suite:
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
+## Optional U(1) block sparsity (`symmetry=true`)
+
+Alongside the dense path above, `src/core/sym/` implements an optional
+Abelian-U(1) block-sparse path, selected by `symmetry=true`. A `SymTensor` labels
+every leg with charge sectors (an arrow `±1` and a `QN`), and stores only the
+blocks whose signed charge sum equals a conserved flux; contraction, SVD, and QR
+run block-by-block.
+
+- `symmetrize_mpo` turns *any* charge-conserving dense MPO into a `SymMPO` by
+  inferring each bond automaton state's `QN` via flux propagation, so the
+  existing FSM builders are reused unchanged. `hubbard_mpo`, `hubbard_2d_mpo`,
+  and `heisenberg_mpo` accept `symmetry=true`.
+- `random_MPS(H::SymMPO; sector=...)` builds a `SymMPS` pinned to a target charge
+  sector; `dmrg(H::SymMPO, psi::SymMPS)` dispatches to a block-sparse mirror of
+  the sweep above (block environments, a packed sector-restricted local
+  eigensolve, and block SVD truncation).
+
+This is validated against the dense path (energies match exact diagonalization to
+~1e-13). Its purpose is targeting a specific `(N↑, N↓)`/`Sz` sector — which the
+dense solver cannot do — rather than speed: for `d = 4` the charge blocks are
+small, so per-block overhead currently makes it slower than the tuned dense path.
+
 ## Current invariants and limitations
 
 - Sites share one physical dimension `d`.
 - Only open boundaries are accepted.
 - The local effective operator is assumed Hermitian.
-- Tensors are dense `Array{T}` with `T` a scalar-type parameter (real or
-  complex); block sparsity is not yet implemented.
-- No quantum-number block sparsity is implemented.
-- No convergence history object or checkpoint is returned.
-- Only the Heisenberg MPO builder is part of the supported public API.
+- Dense tensors are `Array{T}` with `T` a scalar-type parameter (real or
+  complex); an optional U(1) block-sparse backend is available via
+  `symmetry=true` (above).
+- Public MPO builders: Heisenberg (`heisenberg_mpo`), generic nearest-neighbor
+  (`nearest_neighbor_mpo`, `tfim_mpo`), the finite-range string compiler
+  (`general_mpo`), and Fermi-Hubbard (`hubbard_mpo`, `hubbard_2d_mpo`).
 - Dense conversion is a test utility only.
