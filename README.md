@@ -1,5 +1,6 @@
 # NaiveDMRG.jl
 
+[![CI](https://github.com/arnab82/NaiveDMRG.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/arnab82/NaiveDMRG.jl/actions/workflows/CI.yml)
 [![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://arnab82.github.io/NaiveDMRG.jl/)
 
 `NaiveDMRG.jl` is an independent, finite-system DMRG implementation for
